@@ -30,6 +30,9 @@ class EnhancedFrozenLake(gym.Env):
 
     def _generate_grid(self):
         """Generates a map ensuring all paths are at least 2 blocks wide."""
+        safe_zones = [(0, 0), (0, 1), (1, 0), (1, 1), 
+                      (self.size-1, self.size-1), (self.size-1, self.size-2), 
+                      (self.size-2, self.size-1), (self.size-2, self.size-2)]
         while True:
             grid = np.full((self.size, self.size), self.TILE_TYPES['F'], dtype=np.int32)
             grid[0, 0] = self.TILE_TYPES['S']
@@ -38,8 +41,8 @@ class EnhancedFrozenLake(gym.Env):
             # Place holes
             for _ in range(self.num_holes):
                 r, c = np.random.randint(0, self.size, 2)
-                # Don't overwrite Start/Goal
-                if (r, c) != (0, 0) and (r, c) != (self.size-1, self.size-1):
+                # Don't overwrite Start/Goal and safe zones
+                if (r, c) not in safe_zones:
                     grid[r, c] = self.TILE_TYPES['H']
             
             # Wide-Path Check: Can a 2x2 agent reach the goal area?

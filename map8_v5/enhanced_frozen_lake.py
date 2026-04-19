@@ -27,16 +27,19 @@ class EnhancedFrozenLake(gym.Env):
         self.current_step = 0
         self.min_dist_this_ep = 999 # Track best progress
         self.wind_direction = 0 
-        self.wind_probability = 0.2 
+        self.wind_probability = 0.05 # Decreased from 0.1
 
     def _generate_grid(self):
+        safe_zones = [(0, 0), (0, 1), (1, 0), (1, 1), 
+                      (self.size-1, self.size-1), (self.size-1, self.size-2), 
+                      (self.size-2, self.size-1), (self.size-2, self.size-2)]
         while True:
             grid = np.full((self.size, self.size), self.TILE_TYPES['F'], dtype=np.int32)
             grid[0, 0] = self.TILE_TYPES['S']
             grid[self.size-1, self.size-1] = self.TILE_TYPES['G']
             for _ in range(12): 
                 r, c = np.random.randint(0, self.size, 2)
-                if (r, c) != (0, 0) and (r, c) != (self.size-1, self.size-1):
+                if (r, c) not in safe_zones:
                     grid[r, c] = self.TILE_TYPES['H']
             if self._is_solvable(grid): return grid
 

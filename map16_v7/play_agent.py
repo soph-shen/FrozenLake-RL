@@ -8,31 +8,50 @@ import glob
 from enhanced_frozen_lake import EnhancedFrozenLake
 from drqn_agent import DRQN
 
-def get_latest_model():
+def get_model_file():
     files = glob.glob("map16_v7_*.pth")
     if not files: return None
-    return max(files, key=os.path.getctime)
+    
+    # Sort files by creation time, newest first
+    files.sort(key=os.path.getctime, reverse=True)
+    
+    print("Available Models (Latest First):")
+    for i, file in enumerate(files):
+        print(f"[{i}] {file}")
+    
+    while True:
+        try:
+            choice = input(f"Select a model (0-{len(files)-1}) [Default: Latest (0)]: ").strip()
+            if not choice:
+                return files[0]
+            choice_idx = int(choice)
+            if 0 <= choice_idx < len(files):
+                return files[choice_idx]
+            else:
+                print("Invalid choice, try again.")
+        except ValueError:
+            print("Please enter a valid number.")
 
 def play():
     # 1. Setup Environment
     env = EnhancedFrozenLake()
     # Set to TARGET difficulty for final validation
     env.num_holes = 25
-    env.wind_probability = 0.1
+    env.wind_probability = 0.05
     
     if torch.backends.mps.is_available(): device = torch.device("mps")
     elif torch.cuda.is_available(): device = torch.device("cuda")
     else: device = torch.device("cpu")
     
-    latest_model = get_latest_model()
-    if not latest_model:
+    selected_model = get_model_file()
+    if not selected_model:
         print("No model found. Please train first.")
         return
     
-    print(f"Loading latest model: {latest_model} on {device}")
+    print(f"Loading model: {selected_model} on {device}")
     # Using the 256-unit "Power-Up" brain
     model = DRQN(hidden_dim=256).to(device)
-    model.load_state_dict(torch.load(latest_model, map_location=device))
+    model.load_state_dict(torch.load(selected_model, map_location=device))
     model.eval()
 
     plt.ion()

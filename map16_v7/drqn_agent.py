@@ -167,8 +167,8 @@ def train():
                 env.num_holes += 2
                 print(f"\n>>> LEVEL UP: Now using {env.num_holes} holes! (True Eval SR: {eval_sr:.1f}%)")
             if eval_sr >= 40.0 and env.num_holes >= 25 and env.wind_probability == 0.0:
-                env.wind_probability = 0.1
-                print(f"\n>>> LEVEL UP: Wind enabled (0.1)! (True Eval SR: {eval_sr:.1f}%)")
+                env.wind_probability = 0.05
+                print(f"\n>>> LEVEL UP: Wind enabled (0.05)! (True Eval SR: {eval_sr:.1f}%)")
 
             print(f"Ep: {ep} | Holes: {env.num_holes} | Wind: {'ON' if env.wind_probability > 0 else 'OFF'} | Train Avg Rew: {np.mean(reward_history):.2f} | Eval SR: {eval_sr:.1f}% | Eps: {epsilon:.3f}")
 

@@ -8,10 +8,12 @@ from collections import deque
 from datetime import datetime
 from enhanced_frozen_lake import EnhancedFrozenLake
 
-# --- 1. Multi-Input DRQN (Vision + Wind) ---
-class DRQN(nn.Module):
-    def __init__(self, n_actions=4, embedding_dim=16, hidden_dim=128):
-        super(DRQN, self).__init__()
+# --- 1. Multi-Input QR-DRQN (Vision + Wind) ---
+class QR_DRQN(nn.Module):
+    def __init__(self, n_actions=4, num_quantiles=51, embedding_dim=16, hidden_dim=128):
+        super(QR_DRQN, self).__init__()
+        self.num_quantiles = num_quantiles
+        self.n_actions = n_actions
         self.vision_embedding = nn.Embedding(5, embedding_dim)
         self.wind_embedding = nn.Embedding(4, embedding_dim)
         
@@ -21,7 +23,7 @@ class DRQN(nn.Module):
             nn.ReLU()
         )
         self.lstm = nn.LSTM(hidden_dim, hidden_dim, batch_first=True)
-        self.fc_q = nn.Linear(hidden_dim, n_actions)
+        self.fc_q = nn.Linear(hidden_dim, n_actions * num_quantiles)
 
     def forward(self, vision, wind, hidden_state=None):
         b, s, h, w = vision.size()
@@ -30,8 +32,10 @@ class DRQN(nn.Module):
         combined = torch.cat([v_feat, w_feat], dim=2)
         x = self.feature_layer(combined)
         lstm_out, new_hidden = self.lstm(x, hidden_state)
-        q_values = self.fc_q(lstm_out)
-        return q_values, new_hidden
+        
+        quantiles = self.fc_q(lstm_out)
+        quantiles = quantiles.view(b, s, self.n_actions, self.num_quantiles)
+        return quantiles, new_hidden
 
     def init_hidden(self, batch_size=1, device="cpu"):
         return (torch.zeros(1, batch_size, 128).to(device),
@@ -77,7 +81,7 @@ def train():
     elif torch.cuda.is_available(): device = torch.device("cuda")
     else: device = torch.device("cpu")
     
-    print(f"Training on device: {device} | map8_v5 Multi-Input")
+    print(f"Training on device: {device} | map8_v5 QR-DRQN Multi-Input")
     
     BATCH_SIZE = 32
     GAMMA = 0.99
@@ -85,8 +89,8 @@ def train():
     EPS_DECAY = 0.99995
     MAX_EPISODES = 150000 
     
-    policy_net = DRQN().to(device)
-    target_net = DRQN().to(device)
+    policy_net = QR_DRQN().to(device)
+    target_net = QR_DRQN().to(device)
     target_net.load_state_dict(policy_net.state_dict())
     optimizer = optim.Adam(policy_net.parameters(), lr=LR)
     buffer = EpisodeReplayBuffer()
@@ -106,7 +110,8 @@ def train():
             obs_t = torch.FloatTensor(obs).unsqueeze(0).unsqueeze(0).to(device)
             wind_t = torch.LongTensor([wind]).unsqueeze(0).to(device)
             with torch.no_grad():
-                q_values, next_hidden = policy_net(obs_t, wind_t, hidden)
+                quantiles, next_hidden = policy_net(obs_t, wind_t, hidden)
+                q_values = quantiles.mean(dim=3) # Average over quantiles to get Q-value
             action = env.action_space.sample() if random.random() < epsilon else q_values[0, -1].argmax().item()
             next_obs, reward, terminated, truncated, _ = env.step(action)
             if terminated and reward > 10: reached_goal = True
@@ -122,13 +127,45 @@ def train():
 
         if len(buffer.memory) > BATCH_SIZE:
             b_obs, b_wind, b_act, b_rew, b_nobs, b_nwind, b_done = [x.to(device) for x in buffer.sample(BATCH_SIZE)]
-            q_out, _ = policy_net(b_obs, b_wind, policy_net.init_hidden(BATCH_SIZE, device))
-            q_values = q_out.gather(2, b_act.unsqueeze(2)).squeeze(2)
+            
+            # Get current quantiles
+            quantiles, _ = policy_net(b_obs, b_wind, policy_net.init_hidden(BATCH_SIZE, device))
+            
+            # Select quantiles for the taken actions
+            act_idx = b_act.unsqueeze(2).unsqueeze(3).expand(-1, -1, -1, policy_net.num_quantiles)
+            current_quantiles = quantiles.gather(2, act_idx).squeeze(2) # [batch, seq, num_quantiles]
+            
             with torch.no_grad():
-                next_q_out, _ = target_net(b_nobs, b_nwind, target_net.init_hidden(BATCH_SIZE, device))
-                targets = b_rew + (GAMMA * next_q_out.max(dim=2)[0] * (~b_done))
-            loss = F.smooth_l1_loss(q_values, targets)
-            optimizer.zero_grad(); loss.backward()
+                # Get next quantiles from target network
+                next_quantiles, _ = target_net(b_nobs, b_nwind, target_net.init_hidden(BATCH_SIZE, device))
+                next_q_values = next_quantiles.mean(dim=3)
+                next_actions = next_q_values.argmax(dim=2) # [batch, seq]
+                
+                # Select quantiles for best next actions
+                next_act_idx = next_actions.unsqueeze(2).unsqueeze(3).expand(-1, -1, -1, policy_net.num_quantiles)
+                target_quantiles = next_quantiles.gather(2, next_act_idx).squeeze(2) # [batch, seq, num_quantiles]
+                
+                # Compute targets
+                b_rew_exp = b_rew.unsqueeze(2).expand(-1, -1, policy_net.num_quantiles)
+                b_done_exp = b_done.unsqueeze(2).expand(-1, -1, policy_net.num_quantiles)
+                targets = b_rew_exp + (GAMMA * target_quantiles * (~b_done_exp))
+            
+            # Compute Quantile Huber Loss
+            q = current_quantiles.unsqueeze(3) # [batch, seq, num_quantiles, 1]
+            target_q = targets.unsqueeze(2) # [batch, seq, 1, num_quantiles]
+            
+            diff = target_q - q
+            huber_loss = F.smooth_l1_loss(q, target_q, reduction='none')
+            
+            N = policy_net.num_quantiles
+            tau = (torch.arange(N, device=device, dtype=torch.float32) + 0.5) / N
+            tau = tau.view(1, 1, N, 1)
+            
+            weight = torch.abs(tau - (diff < 0).float())
+            loss = (weight * huber_loss).mean(dim=2).sum(dim=2).mean()
+            
+            optimizer.zero_grad()
+            loss.backward()
             torch.nn.utils.clip_grad_norm_(policy_net.parameters(), 1.0)
             optimizer.step()
 
@@ -136,7 +173,7 @@ def train():
         if ep % 100 == 0:
             print(f"Ep: {ep} | Avg Rew: {np.mean(reward_history):.2f} | SR: {np.mean(success_history)*100:.1f}% | Eps: {epsilon:.3f}")
 
-    torch.save(policy_net.state_dict(), f"map8_v5_DRQN_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pth")
+    torch.save(policy_net.state_dict(), f"map8_v5_QR-DRQN_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pth")
 
 if __name__ == "__main__":
     train()

@@ -7,11 +7,31 @@ import os
 import glob
 from enhanced_frozen_lake import EnhancedFrozenLake
 from drqn_agent import DRQN
+from qr_drqn_agent import QR_DRQN
 
-def get_latest_model():
+def get_model_file():
     files = glob.glob("map8_v5_*.pth")
     if not files: return None
-    return max(files, key=os.path.getctime)
+    
+    # Sort files by creation time, newest first
+    files.sort(key=os.path.getctime, reverse=True)
+    
+    print("Available Models (Latest First):")
+    for i, file in enumerate(files):
+        print(f"[{i}] {file}")
+    
+    while True:
+        try:
+            choice = input(f"Select a model (0-{len(files)-1}) [Default: Latest (0)]: ").strip()
+            if not choice:
+                return files[0]
+            choice_idx = int(choice)
+            if 0 <= choice_idx < len(files):
+                return files[choice_idx]
+            else:
+                print("Invalid choice, try again.")
+        except ValueError:
+            print("Please enter a valid number.")
 
 def play():
     # 1. Setup Environment and Device
@@ -25,14 +45,22 @@ def play():
         device = torch.device("cpu")
     
     # 2. Dynamic Model Loading
-    latest_model = get_latest_model()
-    if not latest_model:
+    selected_model = get_model_file()
+    if not selected_model:
         print("No model found in map8_v5 folder. Please train first.")
         return
     
-    print(f"Loading latest model: {latest_model} on {device}")
-    model = DRQN().to(device)
-    model.load_state_dict(torch.load(latest_model, map_location=device))
+    print(f"Loading model: {selected_model} on {device}")
+    
+    is_qr = "QR-DRQN" in selected_model
+    if is_qr:
+        print("Detected QR-DRQN model.")
+        model = QR_DRQN().to(device)
+    else:
+        print("Detected standard DRQN model.")
+        model = DRQN().to(device)
+        
+    model.load_state_dict(torch.load(selected_model, map_location=device))
     model.eval()
 
     # 3. Graphical Setup
@@ -50,7 +78,11 @@ def play():
 
     for ep in range(5):
         obs, info = env.reset()
-        wind = info['wind']
+        
+        # Randomize wind direction for testing
+        wind = np.random.randint(0, 4)
+        env.wind_direction = wind
+        
         hidden = model.init_hidden(1, device=device)
         done, total_reward, step_count = False, 0, 0
         last_action, last_reward = None, 0
@@ -98,7 +130,11 @@ def play():
             
             with torch.no_grad():
                 # Correct call with 3 arguments: vision, wind, hidden
-                q_values, hidden = model(obs_tensor, wind_tensor, hidden)
+                out, hidden = model(obs_tensor, wind_tensor, hidden)
+                if is_qr:
+                    q_values = out.mean(dim=3)
+                else:
+                    q_values = out
             
             action = q_values[0, -1].argmax().item()
             next_obs, reward, terminated, truncated, _ = env.step(action)
