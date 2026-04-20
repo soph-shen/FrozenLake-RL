@@ -53,7 +53,7 @@ While standard RL models excel in static environments, real-world applications d
     \caption{Challenges and Proposed Solutions}
     \begin{tabularx}{\textwidth}{l X l}
         \toprule
-        \textbf{Challenge} & \textbf{Why It Is Hard} & \textbf{Proposed Solution} \\
+        \textbf{Challenge} & \textbf{Description} & \textbf{Proposed Solution} \\
         \midrule
         Partial Observability & Agent only sees a 5x5 window: it cannot use a table keyed on full map state. & DRQN (LSTM memory) \\
         Non-Stationary Dynamics & Introducing a "wind" variable that changes every 1000 episodes: transition probabilities shift; a static policy will degrade. & QR-DQN (distributional RL) \\
@@ -84,6 +84,7 @@ This research proposed the DRQN that addresses the shortcomings of requiring ful
 ``Implicit Quantile Networks for Distributional Reinforcement Learning'' \cite{dabney2018}
 
 \subsection{RL in Non-Stationary Environments}
+\textit{``Reinforcement Learning in Non-Stationary Environments'' (Padakandla et al., 2020).}
 
 \subsection{RND}
 ``Exploration by Random Network Distillation'' \cite{burda2018}
@@ -115,60 +116,8 @@ In map8\_v5, your teammate changed this so the current wind direction is passed 
 The effect is significant: now when the wind shifts, the agent isn't surprised --- it ``knows'' and can factor that into its decisions. For example, if wind is pushing left, a smart agent should compensate by taking more right-leaning paths. Without this explicit input, the agent has to infer wind direction purely from experience, which is much harder.
 
 This is directly relevant to the non-stationary dynamics challenge your proposal described. The supporting literature is the Padakandla et al. (2019) paper in your background doc on RL in non-stationary environments.
-\section{Experiments and Results}
 
-\subsection{Experimental Setup}
-The experiments were conducted in the \textbf{Enhanced Frozen Lake} environment on an $8 \times 8$ grid. Unlike the standard environment, the agent is restricted to a $5 \times 5$ partially observable window. We introduced two stochastic elements: a dynamic "wind" variable that shifts every 1,000 episodes and a living penalty of $-0.1$ per step to discourage aimless wandering. The agent receives a reward of $+30$ for reaching the goal and $-10$ for falling into a hole.
-
-\subsection{Baselines: Tabular Q-Learning and DQN}
-We first established performance baselines using Tabular Q-Learning and a Standard Multi-Input Deep Q-Network (DQN). As expected, Tabular Q-Learning struggled significantly, achieving a success rate of only $17.0\%$. This failure is attributed to the high-dimensional state space created by partial observability; the number of possible $5 \times 5$ window configurations combined with wind directions exceeds what a lookup table can effectively map.
-
-Standard DQN improved performance to $63.0\%$ by utilizing tile embeddings and concatenating wind information. However, its lack of memory remains a critical bottleneck. Without recurrency, the agent cannot distinguish between identical local observations that require different actions based on their position relative to the global map.
-
-\subsection{The Role of Memory and Wind Awareness: DRQN}
-By introducing an LSTM layer in the Deep Recurrent Q-Network (DRQN), the success rate jumped to $94.0\%$. The hidden state allowed the agent to integrate sequences of observations, effectively "mapping" its surroundings as it moved. Furthermore, we found that providing the \textbf{wind direction as an explicit second input} to the model had a significant effect on performance. By concatenating a learned wind embedding with the visual features, the agent could anticipate environmental shifts rather than inferring them purely through trial and error. This allowed the DRQN to proactively compensate for the wind's influence, leading to a much more stable and reliable policy compared to the DQN baseline. This confirms that both memory and explicit awareness of non-stationary dynamics are essential for solving the Enhanced Frozen Lake.
-
-\subsection{Advanced Hybrid Models: QR-DRQN and RND-DRQN}
-While DRQN performed well, it occasionally failed when the wind shifted or when it got stuck in local reward minima. To address these, we implemented two hybrid models:
-\begin{itemize}
-    \item \textbf{QR-DRQN}: By predicting a distribution of returns via Quantile Regression, the agent became more robust to the aleatoric uncertainty introduced by the wind. It achieved a success rate of $97.0\%$.
-    \item \textbf{RND-DRQN}: By adding a curiosity-driven exploration bonus, the agent explored the map more thoroughly during early training, reaching the goal faster and more reliably. It also achieved a success rate of $97.0\%$, with slightly higher average rewards due to more efficient pathfinding.
-\end{itemize}
-
-\subsection{Evaluation Methodology}
-To ensure a fair and scientifically rigorous comparison between the models, we implemented a custom evaluation script, \texttt{evaluate\_models.py}. The core logic of our evaluation involves testing each agent over 100 episodes using \textbf{fixed seeds} for map generation. By fixing the global seed (incrementing from 2000), we ensure that all agents—from the tabular baseline to the advanced hybrid models—are tested on the exact same sequence of map configurations and starting positions.
-
-We also calculated an \textbf{Oracle Baseline} using a Breadth-First Search (BFS) algorithm. This Oracle has perfect visibility of the full map and calculates the optimal shortest path from start to goal. The Oracle's reward is calculated by applying the same living penalties and success bonuses as the learning agents, providing a theoretical upper bound for performance in each specific map instance.
-
-Each model is evaluated on three primary metrics:
-\begin{itemize}
-    \item \textbf{Success Rate}: The percentage of episodes where the agent successfully reached the goal.
-    \item \textbf{Average Reward}: The total reward accumulated per episode, averaged across all test runs.
-    \item \textbf{Average Steps to Success}: The mean number of steps required to reach the goal in successful episodes, serving as a proxy for path efficiency.
-\end{itemize}
-
-\subsection{Comparison of Results}
-The results of our evaluation over 100 test episodes are summarized in Table \ref{results-table}.
-
-\begin{table}[H]
-    \centering
-    \caption{Performance Comparison of RL Agents on Enhanced Frozen Lake}
-    \label{results-table}
-    \begin{tabularx}{\textwidth}{l X c c}
-        \toprule
-        \textbf{Model} & \textbf{Key Architecture} & \textbf{Success Rate} & \textbf{Avg Reward} \\
-        \midrule
-        Oracle (BFS) & Shortest Path (Full Map) & $100.0\%$ & $30.70$ \\
-        \midrule
-        Tabular Q-Learning & State-Wind Lookup Table & $17.0\%$ & $-2.53$ \\
-        Standard DQN & Tile Embeddings + MLP & $63.0\%$ & $8.65$ \\
-        Standard DRQN & LSTM Memory & $94.0\%$ & $19.24$ \\
-        \textbf{QR-DRQN} & \textbf{Distributional + LSTM} & $\mathbf{97.0\%}$ & $\mathbf{19.81}$ \\
-        \textbf{RND-DRQN} & \textbf{Curiosity + LSTM} & $\mathbf{97.0\%}$ & $19.76$ \\
-        \bottomrule
-    \end{tabularx}
-\end{table}
-
+\section{Experiments, results, or synthesis quality}
 \section{Reproducibility and code quality or proof writing}
 ...
 \section{Discussion, Limitation, and Future Directions}
