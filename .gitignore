@@ -67,3 +67,5 @@ Cline/
 *.fdb_latexmk
 *.synctex.gz
 paper/Final-Paper.pdf
+paper/Final-Paper.blg
+paper/Final-Paper.bbl

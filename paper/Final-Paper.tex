@@ -18,13 +18,18 @@
 \usepackage{tabularx}
 \usepackage{float}
 
+\makeatletter
+\renewcommand{\@noticestring}{}
+\makeatother
+
 \title{Solving Enhanced Frozen Lake via Memory-Based and Distributional Reinforcement Learning}
 
 
 \author{%
   Shengkai (Kevin) Tao, Xiyuan (Sophia) Shen \\
-  University of North Carolina at Chapel Hill \\ 
-  DATA-521
+  Department of Data Science \\
+  UNC Chapel Hill \\
+  \texttt{kevintao@unc.edu} \\
 }
 
 \begin{document}
@@ -60,7 +65,7 @@ While standard RL models excel in static environments, real-world applications d
 \section{Background and Related Work}
 
 \subsection{Deep Q-Network (DQN) Baseline}
-``Human-level control through deep reinforcement learning'' (Mnih et al., 2015).
+``Human-Level Control through Deep Reinforcement Learning'' \cite{mnih2015human}
 
 This paper establishes the baseline agent we will compare all methods against. DQN is an upgrade to Q-learning in that instead of using a lookup table that only stores 1 Q value for each state, it combines convolutional neural network to output 1 Q value per action per state. The training will build an intuition that can be carried to future, similar states, making it possible to learn in large state spaces.
 
@@ -69,18 +74,19 @@ This paper's proposed DQN method is a breakthrough on previous RL methods and ac
 \textbf{Limitations:} DQN struggles with partial observability, uncertainty in stochastic environments (random wind variable), adapting policies if environment dynamic changes (change of wind direction).
 
 \subsection{Deep Recurrent Q-Network (DRQN)}
-``Deep Recurrent Q-Learning for Partially Observable MDPs'' (Hausknecht \& Stone, 2017).
+``Deep Recurrent Q-Learning for Partially Observable MDPs'' \cite{hausknecht2017}
 
 This research proposed the DRQN that addresses the shortcomings of requiring full observability in DQN. DRQN replaces the first fully connected layer in DQN with a Long Short-Term Memory (LSTM) recurrent layer that enables the agent to make decisions based on what it sees now and everything it remembers seeing (memory). LSTM works by maintaining a hidden state that gets passed from one timestep to the next and updated at each step. It can decide what to forget (Forget Gate), what to remember (Input Gate), and what to use right now (Output Gate).
 
 \textbf{Limitations:} Slow to train because LSTM is sequential and may not outperform DQN on very simple POMDPs.
 
 \subsection{Distributional RL with Quantile Regression (QR-DQN)}
-``Distributional Reinforcement Learning with Quantile Regression'' (Dabney et al., 2018).
+``Implicit Quantile Networks for Distributional Reinforcement Learning'' \cite{dabney2018}
 
 \subsection{RL in Non-Stationary Environments}
 
 \subsection{RND}
+``Exploration by Random Network Distillation'' \cite{burda2018}
 
 \section{Methods}
 
@@ -95,9 +101,9 @@ The original DRQN only takes in visual observations. Your implementation adds wi
 
 Your code directly implements this, storing full episodes in the EpisodeReplayBuffer. The key difference is that your buffer stores episodes rather than individual transitions, because your LSTM needs sequential traces to build its hidden state. Your code does this too --- the target\_net is copied from policy\_net every few episodes rather than updated continuously.
 
-\textbf{QR-DRQN (Quantile Regression DRQN)} takes DRQN and makes it smarter about uncertainty. Standard DRQN asks ``what's the expected reward from this action?'' --- a single number. But in your environment, the wind randomly pushes the agent in unexpected directions, so outcomes are highly variable. QR-DRQN instead asks ``what's the full distribution of possible rewards?'' --- it predicts 51 different percentile estimates (like: in the worst 10\% of cases I get X, in the median case I get Y, in the best 10\% of cases I get Z). This lets it make more cautious decisions when the environment is unpredictable. The theoretical justification comes from the Dabney et al. (2018) paper in your background document.
+\textbf{QR-DRQN (Quantile Regression DRQN)} takes DRQN and makes it smarter about uncertainty. Standard DRQN asks ``what's the expected reward from this action?'' --- a single number. But in your environment, the wind randomly pushes the agent in unexpected directions, so outcomes are highly variable. QR-DRQN instead asks ``what's the full distribution of possible rewards?'' --- it predicts 51 different percentile estimates (like: in the worst 10\% of cases I get X, in the median case I get Y, in the best 10\% of cases I get Z). This lets it make more cautious decisions when the environment is unpredictable. The theoretical justification comes from the \cite{dabney2018} paper in your background document.
 
-\textbf{RND-DRQN (Random Network Distillation + DRQN)} takes DRQN and adds a curiosity bonus. The problem it addresses is exploration: on a 8×8 grid with a -0.1 living penalty, the agent gets punished for every step it takes, so it might give up exploring and just stand still or repeat safe loops. RND fixes this by giving the agent a bonus reward for visiting states it hasn't seen before. It works by having two small networks --- one frozen random network and one learnable one. When the learnable network can't predict what the frozen one does, that means ``novel state $\rightarrow$ give curiosity reward.'' Over time, as the agent visits everywhere, the curiosity reward naturally fades away. This is based on the Burda et al. (2018) paper in your background doc.
+\textbf{RND-DRQN (Random Network Distillation + DRQN)} takes DRQN and adds a curiosity bonus. The problem it addresses is exploration: on a 8×8 grid with a -0.1 living penalty, the agent gets punished for every step it takes, so it might give up exploring and just stand still or repeat safe loops. RND fixes this by giving the agent a bonus reward for visiting states it hasn't seen before. It works by having two small networks --- one frozen random network and one learnable one. When the learnable network can't predict what the frozen one does, that means ``novel state $\rightarrow$ give curiosity reward.'' Over time, as the agent visits everywhere, the curiosity reward naturally fades away. This is based on the \cite{burda2018} paper in your background doc.
 
 So the purpose of having all three is scientific comparison: does memory alone (DRQN) solve the problem? Does accounting for uncertainty (QR-DRQN) do better under wind? Does curiosity-driven exploration (RND-DRQN) help the agent find the goal faster? The evaluate\_models.py script answers exactly this.
 
@@ -114,5 +120,8 @@ This is directly relevant to the non-stationary dynamics challenge your proposal
 \section{Reproducibility and code quality or proof writing}
 \section{Discussion, Limitation, and Future Directions}
 \section{Conclusion}
+
+\bibliographystyle{plain}
+\bibliography{Project}
 
 \end{document}
