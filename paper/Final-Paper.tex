@@ -85,40 +85,64 @@ This research proposed the DRQN that addresses the shortcomings of requiring ful
 This research is another variant of DQN, where instead of outputting the average expected reward, the model predicts the full distribution of possible rewards. This benefits outcomes that are highly variable and agents are in a stochastic environment. QR-DQN divides the reward range into N evenly spaced percentile: 1st percentile being the worst and last being the best. 
 Notably, this research paper tests QR-DQN on a windy environment. It was found that there are two types of outcomes at the start state: lower returns when wind blows agent off track and higher returns when agent does not encounter wind and smoothly travels to goal. QR-DQN is able to find this pattern.
 
-\textbf{Limitations:} Higher computational cost and N require tuning.
 \subsection{RL in Non-Stationary Environments}
-\textit{``Reinforcement Learning in Non-Stationary Environments'' (Padakandla et al., 2020).}\\
-
+\textit{``Reinforcement Learning in Non-Stationary Environments'' (Padakandla et al., 2020).}
 This paper proposes a new method called Context Q-learning (QL) to address environment changes that affects optimal policy. The first part of Context QL uses data collected during learning to detect changes in model (i.e. when the wind direction or reward changes). This is achieved through an algorithm called Online Dirichlet Change Point detection (OCPD). Then, for each context, it stores a separate Q-table.
 
-\textbf{Limitations:} Context QL needs to be told order and pattern of changes in environment and change detection might lag. 
 \subsection{RND}
-\textit{``Exploration by Random Network Distillation''} \cite{burda2018}\\
-
+``Exploration by Random Network Distillation'' \cite{burda2018}
 While DQN have lower prediction errors on examples similar to those which they have been trained on, they don’t perform as well on unfamiliar environments. Thus, this research proposes a bonus reward that gives the agent extra points for visiting states it is still struggling with. 
-
-\textbf{Limitations:} Can’t distinguish between dead-ends and useful novelty; struggles with partial randomness (wind variable that changes). 
 \section{Methods}
+\subsection{Baseline: Q-learning}
+The equation we are updating is: 
+{%
+  $Q(s,a) \leftarrow Q(s,a) + \alpha\bigl[r + \gamma\max_{a'}Q(s',a') - Q(s,a)\bigr]$.
+}
+{%
+  Note that $\varepsilon$ governs \textit{action selection} separately
+  via the $\varepsilon$-greedy policy: take a random action with probability $\varepsilon$,
+  otherwise take $\arg\max_a Q(s,a)$. This determines which $(s,a)$ pairs get visited
+  and updated, but is not part of the update rule itself.
+}
 
-\textbf{Baseline: Q-learning and DQN} \\
-Maps: We check feasibility of randomly generated maps with BFS. 
+\begin{table}[h]
+\centering
+\small
+\caption{Q-Learning Implementation: Design Choices}
+\begin{tabularx}{\textwidth}{l l X}
+\toprule
+\textbf{Setting} & \textbf{Value} & \textbf{Reason} \\
+\midrule
 
-\textbf{DRQN (Deep Recurrent Q-Network)} is the foundation. The core idea is that the agent only sees a 5$\times$5 window around itself, so it can't see the whole map --- this is called a Partially Observable environment. A regular DQN would be helpless here because each observation alone doesn't tell you enough. DRQN solves this by adding an LSTM (a type of memory unit) so the agent remembers what it saw in previous steps. As it walks around, it mentally builds up a picture of the map from its limited field of view. This is your baseline method --- the one everything else is compared against.
+State key $s$ & $(t_1, \ldots, t_{25}, w)$
+    & Flattened $5 \times 5$ tile observations $t_i \in \{0,1,2,3,4\}$ plus wind direction $w \in \{0,1,2,3\}$;
+      appending $w$ ensures the same grid view under different wind maps to distinct states. \\[4pt]
 
-``While Mnih et al. employ a convolutional network suited for pixel-based inputs, our implementation replaces this with tile embeddings appropriate for symbolic grid observations.''
+Learning rate $\alpha$ & $0.1$
+    & Small enough for stable convergence, large enough for tractable learning speed. \\[4pt]
 
-The original DRQN only takes in visual observations. Your implementation adds wind direction as a second explicit input through a separate embedding layer. That's an enhancement not present in the original.
+Discount factor $\gamma$ & $0.99$
+    & A reward $k$ steps away is worth $\gamma^k \cdot r$ today. High $\gamma$ is needed
+      because the goal may be many steps away. \\[4pt]
 
-Your code directly implements this, storing full episodes in the EpisodeReplayBuffer. The key difference is that your buffer stores episodes rather than individual transitions, because your LSTM needs sequential traces to build its hidden state. Your code does this too --- the target\_net is copied from policy\_net every few episodes rather than updated continuously.
+Exploration $\varepsilon$ & $1.0 \to 0.05$
+    & $\varepsilon_t = \max(0.05,\; 1.0 \times 0.99995^{t})$.
+      Starts fully random to build the Q-table from scratch,
+      then decays to a 5\% floor to retain some exploration. \\[4pt]
 
-\textbf{QR-DRQN (Quantile Regression DRQN)} takes DRQN and makes it smarter about uncertainty. Standard DRQN asks ``what's the expected reward from this action?'' --- a single number. But in your environment, the wind randomly pushes the agent in unexpected directions, so outcomes are highly variable. QR-DRQN instead asks ``what's the full distribution of possible rewards?'' --- it predicts 51 different percentile estimates (like: in the worst 10\% of cases I get X, in the median case I get Y, in the best 10\% of cases I get Z). This lets it make more cautious decisions when the environment is unpredictable. The theoretical justification comes from the \cite{dabney2018} paper in your background document.
+$\varepsilon$ decay rate & $0.99995$
+    & Reaches $\varepsilon \approx 0.05$ around episode 60{,}000 of 150{,}000;
+      the first ${\sim}40\%$ of training is exploration-heavy. \\[4pt]
 
-\textbf{RND-DRQN (Random Network Distillation + DRQN)} takes DRQN and adds a curiosity bonus. The problem it addresses is exploration: on a 8×8 grid with a -0.1 living penalty, the agent gets punished for every step it takes, so it might give up exploring and just stand still or repeat safe loops. RND fixes this by giving the agent a bonus reward for visiting states it hasn't seen before. It works by having two small networks --- one frozen random network and one learnable one. When the learnable network can't predict what the frozen one does, that means ``novel state $\rightarrow$ give curiosity reward.'' Over time, as the agent visits everywhere, the curiosity reward naturally fades away. This is based on the \cite{burda2018} paper in your background doc.
+Max episodes & $150{,}000$
+    & Shared across all methods for a fair comparison. \\[4pt]
 
-So the purpose of having all three is scientific comparison: does memory alone (DRQN) solve the problem? Does accounting for uncertainty (QR-DRQN) do better under wind? Does curiosity-driven exploration (RND-DRQN) help the agent find the goal faster? The evaluate\_models.py script answers exactly this.
+Max steps/episode & $200$
+    & Prevents infinite loops; consistent with grid size. \\
 
-\subsection{What ``Wind as Explicit Second Input'' Means}
-In the original v1 code, the agent only received the 3×3 grid observation. The wind variable existed in the environment, but the agent had no way of knowing what the wind was doing --- it could only feel its effects indirectly when it got pushed in unexpected directions.
+\bottomrule
+\end{tabularx}
+\end{table}
 
 \subsection{DQN}
 The loss function we are minimizing is: 
@@ -142,13 +166,47 @@ The loss function we are minimizing is:
 \begin{tabularx}{\textwidth}{l l X}
 \toprule
 
-The effect is significant: now when the wind shifts, the agent isn't surprised --- it ``knows'' and can factor that into its decisions. For example, if wind is pushing left, a smart agent should compensate by taking more right-leaning paths. Without this explicit input, the agent has to infer wind direction purely from experience, which is much harder.
+\textbf{Setting} & \textbf{Value} & \textbf{Reason} \\
+\midrule
 
-This is directly relevant to the non-stationary dynamics challenge your proposal described. The supporting literature is the Padakandla et al. (2019) paper in your background doc on RL in non-stationary environments.
+Input: tile embedding & $5 \times 16$ 
+    & Each of the 5 tile types in the $5\times5$ window is mapped to a learned
+      16-dimensional vector. Replaces the CNN used in Mnih et al.\ (2015). \\[4pt]
+
+Input: wind embedding & $4 \times 16$
+    & Wind direction is mapped to its own 16-dimensional
+      vector and concatenated with tile features. \\[4pt]
+
+Combined input dim & $26 \times 16 = 416$
+    & 25 tile embeddings $+$ 1 wind embedding, each of size 16, concatenated
+      into a single feature vector fed to the fully connected layers. \\[4pt]
+
+Network architecture & $416 \to 128 \to 128 \to 4$
+    & Two hidden layers with ReLU activations, followed by a linear Q-head
+      outputting one Q-value per action. \\[4pt]
+
+Replay buffer $\mathcal{D}$ & $100{,}000$ transitions
+    & Stores individual $(s, a, r, s')$ transitions; random mini-batch sampling
+      breaks temporal correlation between consecutive steps. \\[4pt]
+
+Batch size & $64$
+    & Number of transitions sampled per gradient update. \\[4pt]
+
+Learning rate $\alpha$ & $1\times10^{-4}$
+    & Standard choice for Adam optimizer in deep RL; small enough to
+      prevent unstable updates. \\[4pt]
+
+Target update freq\ & every $20$ episodes
+    & $\theta^{-} \leftarrow \theta$ every 20 episodes; keeps training targets
+      stable long enough to prevent the network from chasing a moving goal. \\[4pt]
+
+\bottomrule
+\end{tabularx}
+\end{table}
+
 
 \section{Experiments, results, or synthesis quality}
 \section{Reproducibility and code quality or proof writing}
-...
 \section{Discussion, Limitation, and Future Directions}
 \section{Conclusion}
 
