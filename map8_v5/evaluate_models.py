@@ -73,6 +73,7 @@ def evaluate_models(num_episodes=100):
     oracle_rewards = 0
     oracle_steps = []
     for ep in range(num_episodes):
+        np.random.seed(ep + 2000) # Fix global numpy seed for Oracle map generation
         env.reset(seed=ep+2000)
         steps = get_optimal_bfs_path_length(env)
         # Starting dist is 14 (7+7). 14 * 0.5 (progress bonus) = 7.0 
@@ -130,6 +131,7 @@ def evaluate_models(num_episodes=100):
         steps_list = []
         
         for ep in range(num_episodes):
+            np.random.seed(ep + 2000) # Fix global numpy seed for map generation
             obs, info = env.reset(seed=ep+2000) # Fixed seeds for fairness
             wind = info['wind']
             if not is_qlearn and not is_dqn:
