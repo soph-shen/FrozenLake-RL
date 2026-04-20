@@ -1,0 +1,116 @@
+\documentclass{article}
+
+% if you need to pass options to natbib, use, e.g.:
+%     \PassOptionsToPackage{numbers, compress}{natbib}
+% before loading neurips_2025
+
+\usepackage[main, final]{neurips_2025}
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+\usepackage{xcolor}         % colors
+
+\title{Solving Enhanced Frozen Lake via Memory-Based and Distributional Reinforcement Learning}
+
+
+\author{%
+  Shengkai (Kevin) Tao, Xiyuan (Sophia) Shen \\
+  University of North Carolina at Chapel Hill \\ 
+  DATA-521
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+While standard RL models excel in static environments, real-world applications demand resilience against uncertainty. Whether it is a search-and-rescue drone or autonomous underwater devices, agents must handle partial observability and dynamic environmental shifts. Our project is motivated by the need for agents that don't just solve a map but understand its risks. To solve the common issue where high penalties stifle learning, we integrate memory-based architectures with exploration driven by curiosity. We use an Enhanced Frozen Lake simulation to bridge this gap, testing whether an agent can remain adventurous enough to find the goal while remaining smart enough to survive the challenges.
+\end{abstract}
+
+\section{Problem Statement \& Motivation}
+
+\textbf{Motivation:} While standard RL models excel in static environments, real-world applications demand resilience against uncertainty. Whether it is a search-and-rescue drone or autonomous underwater devices, agents must handle partial observability and dynamic environmental shifts. Our project is motivated by the need for agents that don't just solve a map but understand its risks. To solve the common issue where high penalties stifle learning, we integrate memory-based architectures with exploration driven by curiosity. We use an Enhanced Frozen Lake simulation to bridge this gap, testing whether an agent can remain adventurous enough to find the goal while remaining smart enough to survive the challenges.
+
+\textbf{Frozen Lake:} Agent travelling on a frozen lake (slippery) grid. It starts on a cell and needs to reach the goal. There are holes in the grid that the agent needs to avoid. Can only move up, down, left, right.
+
+\textbf{Enhanced Frozen Lake:} Our project adds 3 complications on top of the standard Frozen Lake. This now makes the game a Partially Observable Markov Decision Process (POMDP). Each complication is addressed with a specific method, which will be tested and compared against.
+
+\begin{table}[h]
+  \caption{Challenges and Proposed Solutions}
+  \centering
+  \begin{tabular}{lll}
+    \toprule
+    Challenge & Why It Is Hard & Proposed Solution \\
+    \midrule
+    Partial Observability & Agent only sees a 5x5 window & DRQN (LSTM memory) \\
+    Non-Stationary Dynamics & Wind changes every 1000 episodes & QR-DQN (distributional RL) \\
+    Costly Exploration & Agent stops exploring due to penalties & RND-DQN (exploration) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Background and Related Work}
+
+\subsection{Deep Q-Network (DQN) Baseline}
+``Human-level control through deep reinforcement learning'' (Mnih et al., 2015).
+
+This paper establishes the baseline agent we will compare all methods against. DQN is an upgrade to Q-learning in that instead of using a lookup table that only stores 1 Q value for each state, it combines convolutional neural network to output 1 Q value per action per state. The training will build an intuition that can be carried to future, similar states, making it possible to learn in large state spaces.
+
+This paper's proposed DQN method is a breakthrough on previous RL methods and achieves to play 49 Atari games at human level. This training is possible because of 1) experience relay that trains on randomly sampled mini batches of transitions stored in a buffer, preventing the network from overfitting to recent consecutive experiences and stabilizing learning across diverse situations 2) a target network that provides a fixed reference point for computing training targets, preventing the feedback loop that occurs when the network chases a constantly shifting goal, which would otherwise cause training to diverge.
+
+\textbf{Limitations:} DQN struggles with partial observability, uncertainty in stochastic environments (random wind variable), adapting policies if environment dynamic changes (change of wind direction).
+
+\subsection{Deep Recurrent Q-Network (DRQN)}
+``Deep Recurrent Q-Learning for Partially Observable MDPs'' (Hausknecht \& Stone, 2017).
+
+This research proposed the DRQN that addresses the shortcomings of requiring full observability in DQN. DRQN replaces the first fully connected layer in DQN with a Long Short-Term Memory (LSTM) recurrent layer that enables the agent to make decisions based on what it sees now and everything it remembers seeing (memory). LSTM works by maintaining a hidden state that gets passed from one timestep to the next and updated at each step. It can decide what to forget (Forget Gate), what to remember (Input Gate), and what to use right now (Output Gate).
+
+\textbf{Limitations:} Slow to train because LSTM is sequential and may not outperform DQN on very simple POMDPs.
+
+\subsection{Distributional RL with Quantile Regression (QR-DQN)}
+``Distributional Reinforcement Learning with Quantile Regression'' (Dabney et al., 2018).
+
+\subsection{RL in Non-Stationary Environments}
+
+\subsection{RND}
+
+\section{Methods}
+
+\textbf{Baseline: Q-learning and DQN} \\
+Maps: We check feasibility of randomly generated maps with BFS. 
+
+\textbf{DRQN (Deep Recurrent Q-Network)} is the foundation. The core idea is that the agent only sees a 5$\times$5 window around itself, so it can't see the whole map --- this is called a Partially Observable environment. A regular DQN would be helpless here because each observation alone doesn't tell you enough. DRQN solves this by adding an LSTM (a type of memory unit) so the agent remembers what it saw in previous steps. As it walks around, it mentally builds up a picture of the map from its limited field of view. This is your baseline method --- the one everything else is compared against.
+
+``While Mnih et al. employ a convolutional network suited for pixel-based inputs, our implementation replaces this with tile embeddings appropriate for symbolic grid observations.''
+
+The original DRQN only takes in visual observations. Your implementation adds wind direction as a second explicit input through a separate embedding layer. That's an enhancement not present in the original.
+
+Your code directly implements this, storing full episodes in the EpisodeReplayBuffer. The key difference is that your buffer stores episodes rather than individual transitions, because your LSTM needs sequential traces to build its hidden state. Your code does this too --- the target\_net is copied from policy\_net every few episodes rather than updated continuously.
+
+\textbf{QR-DRQN (Quantile Regression DRQN)} takes DRQN and makes it smarter about uncertainty. Standard DRQN asks ``what's the expected reward from this action?'' --- a single number. But in your environment, the wind randomly pushes the agent in unexpected directions, so outcomes are highly variable. QR-DRQN instead asks ``what's the full distribution of possible rewards?'' --- it predicts 51 different percentile estimates (like: in the worst 10\% of cases I get X, in the median case I get Y, in the best 10\% of cases I get Z). This lets it make more cautious decisions when the environment is unpredictable. The theoretical justification comes from the Dabney et al. (2018) paper in your background document.
+
+\textbf{RND-DRQN (Random Network Distillation + DRQN)} takes DRQN and adds a curiosity bonus. The problem it addresses is exploration: on a 8×8 grid with a -0.1 living penalty, the agent gets punished for every step it takes, so it might give up exploring and just stand still or repeat safe loops. RND fixes this by giving the agent a bonus reward for visiting states it hasn't seen before. It works by having two small networks --- one frozen random network and one learnable one. When the learnable network can't predict what the frozen one does, that means ``novel state $\rightarrow$ give curiosity reward.'' Over time, as the agent visits everywhere, the curiosity reward naturally fades away. This is based on the Burda et al. (2018) paper in your background doc.
+
+So the purpose of having all three is scientific comparison: does memory alone (DRQN) solve the problem? Does accounting for uncertainty (QR-DRQN) do better under wind? Does curiosity-driven exploration (RND-DRQN) help the agent find the goal faster? The evaluate\_models.py script answers exactly this.
+
+\subsection{What ``Wind as Explicit Second Input'' Means}
+In the original v1 code, the agent only received the 3×3 grid observation. The wind variable existed in the environment, but the agent had no way of knowing what the wind was doing --- it could only feel its effects indirectly when it got pushed in unexpected directions.
+
+In map8\_v5, your teammate changed this so the current wind direction is passed directly into the model as a second input alongside the visual observation. In the code, there's a separate wind\_embedding layer --- the wind direction (0, 1, 2, or 3) gets converted into a 16-dimensional vector, which is then concatenated with the visual features before being fed into the LSTM.
+
+The effect is significant: now when the wind shifts, the agent isn't surprised --- it ``knows'' and can factor that into its decisions. For example, if wind is pushing left, a smart agent should compensate by taking more right-leaning paths. Without this explicit input, the agent has to infer wind direction purely from experience, which is much harder.
+
+This is directly relevant to the non-stationary dynamics challenge your proposal described. The supporting literature is the Padakandla et al. (2019) paper in your background doc on RL in non-stationary environments.
+
+\section{Experiments, results, or synthesis quality}
+\section{Reproducibility and code quality or proof writing}
+\section{Discussion, Limitation, and Future Directions}
+\section{Conclusion}
+
+\end{document}
