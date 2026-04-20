@@ -81,14 +81,23 @@ This research proposed the DRQN that addresses the shortcomings of requiring ful
 \textbf{Limitations:} Slow to train because LSTM is sequential and may not outperform DQN on very simple POMDPs.
 
 \subsection{Distributional RL with Quantile Regression (QR-DQN)}
-``Implicit Quantile Networks for Distributional Reinforcement Learning'' \cite{dabney2018}
+``Implicit Quantile Networks for Distributional Reinforcement Learning'' \cite{dabney2018}\\
+This research is another variant of DQN, where instead of outputting the average expected reward, the model predicts the full distribution of possible rewards. This benefits outcomes that are highly variable and agents are in a stochastic environment. QR-DQN divides the reward range into N evenly spaced percentile: 1st percentile being the worst and last being the best. 
+Notably, this research paper tests QR-DQN on a windy environment. It was found that there are two types of outcomes at the start state: lower returns when wind blows agent off track and higher returns when agent does not encounter wind and smoothly travels to goal. QR-DQN is able to find this pattern.
 
+\textbf{Limitations:} Higher computational cost and N require tuning.
 \subsection{RL in Non-Stationary Environments}
-\textit{``Reinforcement Learning in Non-Stationary Environments'' (Padakandla et al., 2020).}
+\textit{``Reinforcement Learning in Non-Stationary Environments'' (Padakandla et al., 2020).}\\
 
+This paper proposes a new method called Context Q-learning (QL) to address environment changes that affects optimal policy. The first part of Context QL uses data collected during learning to detect changes in model (i.e. when the wind direction or reward changes). This is achieved through an algorithm called Online Dirichlet Change Point detection (OCPD). Then, for each context, it stores a separate Q-table.
+
+\textbf{Limitations:} Context QL needs to be told order and pattern of changes in environment and change detection might lag. 
 \subsection{RND}
-``Exploration by Random Network Distillation'' \cite{burda2018}
+\textit{``Exploration by Random Network Distillation''} \cite{burda2018}\\
 
+While DQN have lower prediction errors on examples similar to those which they have been trained on, they don’t perform as well on unfamiliar environments. Thus, this research proposes a bonus reward that gives the agent extra points for visiting states it is still struggling with. 
+
+\textbf{Limitations:} Can’t distinguish between dead-ends and useful novelty; struggles with partial randomness (wind variable that changes). 
 \section{Methods}
 
 \textbf{Baseline: Q-learning and DQN} \\
@@ -111,7 +120,27 @@ So the purpose of having all three is scientific comparison: does memory alone (
 \subsection{What ``Wind as Explicit Second Input'' Means}
 In the original v1 code, the agent only received the 3×3 grid observation. The wind variable existed in the environment, but the agent had no way of knowing what the wind was doing --- it could only feel its effects indirectly when it got pushed in unexpected directions.
 
-In map8\_v5, your teammate changed this so the current wind direction is passed directly into the model as a second input alongside the visual observation. In the code, there's a separate wind\_embedding layer --- the wind direction (0, 1, 2, or 3) gets converted into a 16-dimensional vector, which is then concatenated with the visual features before being fed into the LSTM.
+\subsection{DQN}
+The loss function we are minimizing is: 
+{%
+  $L(\theta) = \mathbb{E}_{(s,a,r,s') \sim \mathcal{D}}\!\left[\left(r + \gamma \max_{a'} Q(s',a';\theta^{-}) - Q(s,a;\theta)\right)^{2}\right]$
+}
+{%
+  where $\theta$ are the policy network weights being trained, $\theta^{-}$ are the
+  frozen target network weights used to compute stable training targets,
+  $\mathcal{D}$ is the replay buffer, and $\gamma$ is the discount factor.
+  Unlike Q-learning which updates a table entry directly, DQN minimizes this loss
+  via gradient descent, adjusting $\theta$ so the network's output $Q(s,a;\theta)$
+  moves closer to the target $r + \gamma \max_{a'} Q(s',a';\theta^{-})$.
+  $\varepsilon$ governs action selection separately via $\varepsilon$-greedy policy,
+  as in Q-learning.
+}
+\begin{table}[H]
+\centering
+\small
+\caption{DQN Implementation: Design Choices}
+\begin{tabularx}{\textwidth}{l l X}
+\toprule
 
 The effect is significant: now when the wind shifts, the agent isn't surprised --- it ``knows'' and can factor that into its decisions. For example, if wind is pushing left, a smart agent should compensate by taking more right-leaning paths. Without this explicit input, the agent has to infer wind direction purely from experience, which is much harder.
 
