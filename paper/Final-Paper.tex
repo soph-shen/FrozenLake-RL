@@ -15,6 +15,8 @@
 \usepackage{nicefrac}       % compact symbols for 1/2, etc.
 \usepackage{microtype}      % microtypography
 \usepackage{xcolor}         % colors
+\usepackage{tabularx}
+\usepackage{float}
 
 \title{Solving Enhanced Frozen Lake via Memory-Based and Distributional Reinforcement Learning}
 
@@ -41,18 +43,18 @@ While standard RL models excel in static environments, real-world applications d
 
 \textbf{Enhanced Frozen Lake:} Our project adds 3 complications on top of the standard Frozen Lake. This now makes the game a Partially Observable Markov Decision Process (POMDP). Each complication is addressed with a specific method, which will be tested and compared against.
 
-\begin{table}[h]
-  \caption{Challenges and Proposed Solutions}
-  \centering
-  \begin{tabular}{lll}
-    \toprule
-    Challenge & Why It Is Hard & Proposed Solution \\
-    \midrule
-    Partial Observability & Agent only sees a 5x5 window & DRQN (LSTM memory) \\
-    Non-Stationary Dynamics & Wind changes every 1000 episodes & QR-DQN (distributional RL) \\
-    Costly Exploration & Agent stops exploring due to penalties & RND-DQN (exploration) \\
-    \bottomrule
-  \end{tabular}
+\begin{table}[H]
+    \centering
+    \caption{Challenges and Proposed Solutions}
+    \begin{tabularx}{\textwidth}{l X l}
+        \toprule
+        \textbf{Challenge} & \textbf{Why It Is Hard} & \textbf{Proposed Solution} \\
+        \midrule
+        Partial Observability & Agent only sees a 5x5 window: it cannot use a table keyed on full map state. & DRQN (LSTM memory) \\
+        Non-Stationary Dynamics & Introducing a "wind" variable that changes every 1000 episodes: transition probabilities shift; a static policy will degrade. & QR-DQN (distributional RL) \\
+        Costly Exploration & Agent navigates a randomly generated map. Without curiosity it learns to play safe and stops exploring. & RND-DQN (exploration) \\
+        \bottomrule
+    \end{tabularx}
 \end{table}
 
 \section{Background and Related Work}

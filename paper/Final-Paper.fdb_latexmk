@@ -1,6 +1,6 @@
 # Fdb version 3
-["pdflatex"] 1776655743 "/Users/kevintao/Develop/DATA-521/FrozenLake-RL/paper/Final-Paper.tex" "Final-Paper.pdf" "Final-Paper" 1776655745
-  "/Users/kevintao/Develop/DATA-521/FrozenLake-RL/paper/Final-Paper.tex" 1776655741 10593 3908adabf1d7c610fdabe9d77970500c ""
+["pdflatex"] 1776696821 "/Users/kevintao/Develop/DATA-521/FrozenLake-RL/paper/Final-Paper.tex" "Final-Paper.pdf" "Final-Paper" 1776696821
+  "/Users/kevintao/Develop/DATA-521/FrozenLake-RL/paper/Final-Paper.tex" 1776696820 10919 73dc3e73a1fd0ea75ae43d39846f52ef ""
   "/usr/local/texlive/2022/texmf-dist/fonts/enc/dvips/base/8r.enc" 1165713224 4850 80dc9bab7f31fb78a000ccfed0e27cab ""
   "/usr/local/texlive/2022/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/local/texlive/2022/texmf-dist/fonts/tfm/adobe/times/ptmb8r.tfm" 1136768653 4524 6bce29db5bc272ba5f332261583fee9c ""
@@ -52,6 +52,7 @@
   "/usr/local/texlive/2022/texmf-dist/tex/latex/booktabs/booktabs.sty" 1579038678 6078 f1cb470c9199e7110a27851508ed7a5c ""
   "/usr/local/texlive/2022/texmf-dist/tex/latex/environ/environ.sty" 1399239813 4378 f429f0da968c278653359293040a8f52 ""
   "/usr/local/texlive/2022/texmf-dist/tex/latex/etoolbox/etoolbox.sty" 1601931149 46845 3b58f70c6e861a13d927bff09d35ecbc ""
+  "/usr/local/texlive/2022/texmf-dist/tex/latex/float/float.sty" 1137110151 6749 16d2656a1984957e674b149555f1ea1d ""
   "/usr/local/texlive/2022/texmf-dist/tex/latex/geometry/geometry.sty" 1578002852 41601 9cf6c5257b1bc7af01a58859749dd37a ""
   "/usr/local/texlive/2022/texmf-dist/tex/latex/graphics-cfg/color.cfg" 1459978653 1213 620bba36b25224fa9b7e1ccb4ecb76fd ""
   "/usr/local/texlive/2022/texmf-dist/tex/latex/graphics-def/pdftex.def" 1601931164 19103 48d29b6e2a64cb717117ef65f107b404 ""
@@ -77,6 +78,8 @@
   "/usr/local/texlive/2022/texmf-dist/tex/latex/psnfss/ts1ptm.fd" 1137110629 619 96f56dc5d1ef1fe1121f1cfeec70ee0c ""
   "/usr/local/texlive/2022/texmf-dist/tex/latex/refcount/refcount.sty" 1576624809 9878 9e94e8fa600d95f9c7731bb21dfb67a4 ""
   "/usr/local/texlive/2022/texmf-dist/tex/latex/rerunfilecheck/rerunfilecheck.sty" 1575674187 9715 b051d5b493d9fe5f4bc251462d039e5f ""
+  "/usr/local/texlive/2022/texmf-dist/tex/latex/tools/array.sty" 1636758526 12694 6c23725d50ab9d1e2d3ce482c58ffcf3 ""
+  "/usr/local/texlive/2022/texmf-dist/tex/latex/tools/tabularx.sty" 1622581934 7147 5ac8a9ef36411064b1a501137af0fa54 ""
   "/usr/local/texlive/2022/texmf-dist/tex/latex/trimspaces/trimspaces.sty" 1253232110 1380 971a51b00a14503ddf754cab24c3f209 ""
   "/usr/local/texlive/2022/texmf-dist/tex/latex/units/nicefrac.sty" 1137111039 4029 0462ee5ab265cf59dc15a41a3b883101 ""
   "/usr/local/texlive/2022/texmf-dist/tex/latex/url/url.sty" 1388531844 12796 8edb7d69a20b857904dd0ea757c14ec9 ""
@@ -85,9 +88,9 @@
   "/usr/local/texlive/2022/texmf-var/fonts/map/pdftex/updmap/pdftex.map" 1647878959 4410336 7d30a02e9fa9a16d7d1f8d037ba69641 ""
   "/usr/local/texlive/2022/texmf-var/web2c/pdftex/pdflatex.fmt" 1673101134 2826444 ce7097abc4a75b0b9cb533caf0e208a2 ""
   "/usr/local/texlive/2022/texmf.cnf" 1647878952 577 209b46be99c9075fd74d4c0369380e8c ""
-  "Final-Paper.aux" 1776655745 2551 081567d5881ba0ac25877a6aac24d89f "pdflatex"
-  "Final-Paper.out" 1776655745 2793 002133205222e1b08bb65cae3a07884d "pdflatex"
-  "Final-Paper.tex" 1776655741 10593 3908adabf1d7c610fdabe9d77970500c ""
+  "Final-Paper.aux" 1776696821 2551 921a1ea5dcd8d279f630ad49bb4aea16 "pdflatex"
+  "Final-Paper.out" 1776696821 2793 002133205222e1b08bb65cae3a07884d "pdflatex"
+  "Final-Paper.tex" 1776696820 10919 73dc3e73a1fd0ea75ae43d39846f52ef ""
   "neurips_2025.sty" 1776652733 13023 2817c1b954c70ec3156371423da6545c ""
   (generated)
   "Final-Paper.aux"
