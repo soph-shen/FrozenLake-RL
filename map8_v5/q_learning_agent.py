@@ -14,12 +14,12 @@ class QLearningAgent:
         # Use a defaultdict for the Q-table so unseen states start at 0
         self.q_table = defaultdict(lambda: np.zeros(n_actions))
 
-    def _state_to_key(self, obs):
-        # Convert the 5x5 numpy array observation into a hashable tuple
-        return tuple(obs.flatten())
+    def _state_to_key(self, obs, wind):
+        # Convert the 5x5 numpy array observation and wind into a hashable tuple
+        return tuple(obs.flatten()) + (wind,)
 
-    def get_action(self, obs, epsilon=0.0):
-        state_key = self._state_to_key(obs)
+    def get_action(self, obs, wind, epsilon=0.0):
+        state_key = self._state_to_key(obs, wind)
         if random.random() < epsilon:
             return random.randint(0, self.n_actions - 1)
         else:
@@ -29,9 +29,9 @@ class QLearningAgent:
             best_actions = [a for a in range(self.n_actions) if q_values[a] == max_q]
             return random.choice(best_actions)
 
-    def update(self, obs, action, reward, next_obs, done):
-        state_key = self._state_to_key(obs)
-        next_state_key = self._state_to_key(next_obs)
+    def update(self, obs, wind, action, reward, next_obs, next_wind, done):
+        state_key = self._state_to_key(obs, wind)
+        next_state_key = self._state_to_key(next_obs, next_wind)
         
         best_next_q = 0 if done else np.max(self.q_table[next_state_key])
         td_target = reward + self.gamma * best_next_q
@@ -68,20 +68,23 @@ def train_q_learning():
 
     for ep in range(1, MAX_EPISODES + 1):
         obs, info = env.reset()
+        wind = info['wind']
         total_reward = 0
         reached_goal = False
         
         for t in range(MAX_STEPS):
-            action = agent.get_action(obs, epsilon)
-            next_obs, reward, terminated, truncated, _ = env.step(action)
+            action = agent.get_action(obs, wind, epsilon)
+            next_obs, reward, terminated, truncated, info = env.step(action)
+            next_wind = info.get('wind', wind)
             
             if terminated and reward > 10:
                 reached_goal = True
                 
             done = terminated or truncated
-            agent.update(obs, action, reward, next_obs, done)
+            agent.update(obs, wind, action, reward, next_obs, next_wind, done)
             
             obs = next_obs
+            wind = next_wind
             total_reward += reward
             if done: break
             

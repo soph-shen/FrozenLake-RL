@@ -8,6 +8,7 @@ import glob
 from enhanced_frozen_lake import EnhancedFrozenLake
 from drqn_agent import DRQN
 from qr_drqn_agent import QR_DRQN
+from dqn_agent import DQN
 
 def get_model_file():
     files = glob.glob("map8_v5_*.pth")
@@ -53,9 +54,14 @@ def play():
     print(f"Loading model: {selected_model} on {device}")
     
     is_qr = "QR-DRQN" in selected_model
+    is_dqn = "DQN" in selected_model and "DRQN" not in selected_model
+    
     if is_qr:
         print("Detected QR-DRQN model.")
         model = QR_DRQN().to(device)
+    elif is_dqn:
+        print("Detected standard DQN model.")
+        model = DQN().to(device)
     else:
         print("Detected standard DRQN model.")
         model = DRQN().to(device)
@@ -83,7 +89,7 @@ def play():
         wind = np.random.randint(0, 4)
         env.wind_direction = wind
         
-        hidden = model.init_hidden(1, device=device)
+        hidden = None if is_dqn else model.init_hidden(1, device=device)
         done, total_reward, step_count = False, 0, 0
         last_action, last_reward = None, 0
 
@@ -129,12 +135,13 @@ def play():
             wind_tensor = torch.LongTensor([wind]).unsqueeze(0).to(device)
             
             with torch.no_grad():
-                # Correct call with 3 arguments: vision, wind, hidden
-                out, hidden = model(obs_tensor, wind_tensor, hidden)
-                if is_qr:
+                if is_dqn:
+                    q_values, _ = model(obs_tensor, wind_tensor)
+                elif is_qr:
+                    out, hidden = model(obs_tensor, wind_tensor, hidden)
                     q_values = out.mean(dim=3)
                 else:
-                    q_values = out
+                    q_values, hidden = model(obs_tensor, wind_tensor, hidden)
             
             action = q_values[0, -1].argmax().item()
             next_obs, reward, terminated, truncated, _ = env.step(action)

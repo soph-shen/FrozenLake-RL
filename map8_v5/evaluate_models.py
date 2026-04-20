@@ -5,6 +5,7 @@ import os
 from enhanced_frozen_lake import EnhancedFrozenLake
 from drqn_agent import DRQN
 from qr_drqn_agent import QR_DRQN
+from dqn_agent import DQN
 from q_learning_agent import QLearningAgent
 
 def get_optimal_bfs_path_length(env):
@@ -43,6 +44,8 @@ def evaluate_models(num_episodes=100):
             method = "RND-DRQN"
         elif "Q-Learning" in fname:
             method = "Tabular Q-Learning"
+        elif "DQN" in fname and "DRQN" not in fname:
+            method = "Standard DQN"
         elif "DRQN" in fname:
             method = "Standard DRQN"
         else:
@@ -91,12 +94,21 @@ def evaluate_models(num_episodes=100):
         is_qr = "QR-DRQN" in filename
         is_rnd = "RND-DRQN" in filename
         is_qlearn = "Q-Learning" in filename
+        is_dqn = "DQN" in filename and "DRQN" not in filename
         
         if is_qlearn:
             model = QLearningAgent()
             model.load(model_path)
         elif is_qr:
             model = QR_DRQN().to(device)
+            try:
+                model.load_state_dict(torch.load(model_path, map_location=device))
+            except RuntimeError as e:
+                print(f"Skipping {filename}: Incompatible model architecture.")
+                continue
+            model.eval()
+        elif is_dqn:
+            model = DQN().to(device)
             try:
                 model.load_state_dict(torch.load(model_path, map_location=device))
             except RuntimeError as e:
@@ -120,15 +132,17 @@ def evaluate_models(num_episodes=100):
         for ep in range(num_episodes):
             obs, info = env.reset(seed=ep+2000) # Fixed seeds for fairness
             wind = info['wind']
-            if not is_qlearn:
+            if not is_qlearn and not is_dqn:
                 hidden = model.init_hidden(1, device=device)
+            elif is_dqn:
+                hidden = None
             done = False
             step_count = 0
             ep_reward = 0
             
             while not done:
                 if is_qlearn:
-                    action = model.get_action(obs, epsilon=0.0)
+                    action = model.get_action(obs, wind, epsilon=0.0)
                 else:
                     obs_t = torch.FloatTensor(obs).unsqueeze(0).unsqueeze(0).to(device)
                     wind_t = torch.LongTensor([wind]).unsqueeze(0).to(device)
@@ -137,6 +151,8 @@ def evaluate_models(num_episodes=100):
                         if is_qr:
                             out, hidden = model(obs_t, wind_t, hidden)
                             q_values = out.mean(dim=3)
+                        elif is_dqn:
+                            q_values, _ = model(obs_t, wind_t)
                         else:
                             q_values, hidden = model(obs_t, wind_t, hidden)
                             
