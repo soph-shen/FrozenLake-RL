@@ -65,3 +65,5 @@ Cline/
 *.aux
 *.fls
 *.fdb_latexmk
+*.synctex.gz
+paper/Final-Paper.pdf
