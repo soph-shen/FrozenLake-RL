@@ -61,3 +61,7 @@ plots
 
 submission
 Cline/
+# latex
+*.aux
+*.fls
+*.fdb_latexmk
