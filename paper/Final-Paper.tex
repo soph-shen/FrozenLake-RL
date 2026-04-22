@@ -1,7 +1,7 @@
 \documentclass{article}
 
 % if you need to pass options to natbib, use, e.g.:
-%     \PassOptionsToPackage{numbers, compress}{natbib}
+\PassOptionsToPackage{numbers, compress}{natbib}
 % before loading neurips_2025
 
 \usepackage[main, final]{neurips_2025}
@@ -27,9 +27,9 @@
 
 \author{%
   Shengkai (Kevin) Tao, Xiyuan (Sophia) Shen \\
-  Department of Data Science \\
+  School of Data Science And Society \\
   UNC Chapel Hill \\
-  \texttt{kevintao@unc.edu} \\
+  \texttt{\{kevintao, xyshen\}@unc.edu} \\
 }
 
 \begin{document}
@@ -37,27 +37,28 @@
 \maketitle
 
 \begin{abstract}
-While standard RL models excel in static environments, real-world applications demand resilience against uncertainty. Whether it is a search-and-rescue drone or autonomous underwater devices, agents must handle partial observability and dynamic environmental shifts. Our project is motivated by the need for agents that don't just solve a map but understand its risks. To solve the common issue where high penalties stifle learning, we integrate memory-based architectures with exploration driven by curiosity. We use an Enhanced Frozen Lake simulation to bridge this gap, testing whether an agent can remain adventurous enough to find the goal while remaining smart enough to survive the challenges.
+While standard reinforcement learning (RL) models excel in static environments, real-world applications demand resilience against uncertainty. From search-and-rescue drones to autonomous underwater vehicles, agents must navigate partial observability and dynamic environmental shifts. This project addresses these challenges using an Enhanced Frozen Lake simulation, which transforms the standard environment into a Partially Observable Markov Decision Process (POMDP) with non-stationary dynamics. We integrate memory-based architectures with curiosity-driven exploration and distributional RL to bridge the gap between simple grid-world navigation and complex, risk-aware decision making. Our results demonstrate that the combination of temporal memory and distributional return estimation significantly enhances agent stability and success rates in stochastic environments.
 \end{abstract}
 
 \section{Problem Statement \& Motivation}
 
-\textbf{Motivation:} While standard RL models excel in static environments, real-world applications demand resilience against uncertainty. Whether it is a search-and-rescue drone or autonomous underwater devices, agents must handle partial observability and dynamic environmental shifts. Our project is motivated by the need for agents that don't just solve a map but understand its risks. To solve the common issue where high penalties stifle learning, we integrate memory-based architectures with exploration driven by curiosity. We use an Enhanced Frozen Lake simulation to bridge this gap, testing whether an agent can remain adventurous enough to find the goal while remaining smart enough to survive the challenges.
+\textbf{Motivation:} Modern RL agents often struggle when faced with the "deadly triad" of partial observability, non-stationary dynamics, and sparse, high-penalty rewards. Our project is motivated by the need for agents that do not simply memorize a map, but instead develop an internal representation of environmental risks. By using the Enhanced Frozen Lake simulation, we test whether an agent can remain sufficiently adventurous to find the goal while developing the intelligence required to survive unpredictable challenges.
 
-\textbf{Frozen Lake:} Agent travelling on a frozen lake (slippery) grid. It starts on a cell and needs to reach the goal. There are holes in the grid that the agent needs to avoid. Can only move up, down, left, right.
+\textbf{Frozen Lake:} In the standard environment, an agent travels across a slippery grid, attempting to reach a goal while avoiding holes. Movement is restricted to cardinal directions (up, down, left, right).
 
-\textbf{Enhanced Frozen Lake:} Our project adds 3 complications on top of the standard Frozen Lake. This now makes the game a Partially Observable Markov Decision Process (POMDP). Each complication is addressed with a specific method, which will be tested and compared against.
+\textbf{Enhanced Frozen Lake:} We extend the standard environment by introducing three primary complications that elevate the task to a POMDP. Each challenge is addressed with a specific architectural solution, summarized in Table \ref{tab:challenges}.
 
 \begin{table}[H]
     \centering
     \caption{Challenges and Proposed Solutions}
+    \label{tab:challenges}
     \begin{tabularx}{\textwidth}{l X l}
         \toprule
         \textbf{Challenge} & \textbf{Description} & \textbf{Proposed Solution} \\
         \midrule
-        Partial Observability & Agent only sees a 5x5 window: it cannot use a table keyed on full map state. & DRQN (LSTM memory) \\
-        Non-Stationary Dynamics & Introducing a "wind" variable that changes every 1000 episodes: transition probabilities shift; a static policy will degrade. & QR-DQN (distributional RL) \\
-        Costly Exploration & Agent navigates a randomly generated map. Without curiosity it learns to play safe and stops exploring. & RND-DQN (exploration) \\
+        Partial Observability & Agent only sees a $5\times5$ window; the global state is unknown. & DRQN (LSTM Memory) \\
+        Non-Stationary Dynamics & A "wind" variable shifts every 1,000 episodes, altering transition probabilities. & QR-DRQN (Distributional RL) \\
+        Costly Exploration & High penalties for failure discourage exploration in new maps. & RND-DRQN (Curiosity) \\
         \bottomrule
     \end{tabularx}
 \end{table}
@@ -65,152 +66,191 @@ While standard RL models excel in static environments, real-world applications d
 \section{Background and Related Work}
 
 \subsection{Deep Q-Network (DQN) Baseline}
-``Human-Level Control through Deep Reinforcement Learning'' \cite{mnih2015human}
+\textit{``Human-Level Control through Deep Reinforcement Learning''} \cite{mnih2015human}
 
-This paper establishes the baseline agent we will compare all methods against. DQN is an upgrade to Q-learning in that instead of using a lookup table that only stores 1 Q value for each state, it combines convolutional neural network to output 1 Q value per action per state. The training will build an intuition that can be carried to future, similar states, making it possible to learn in large state spaces.
-
-This paper's proposed DQN method is a breakthrough on previous RL methods and achieves to play 49 Atari games at human level. This training is possible because of 1) experience relay that trains on randomly sampled mini batches of transitions stored in a buffer, preventing the network from overfitting to recent consecutive experiences and stabilizing learning across diverse situations 2) a target network that provides a fixed reference point for computing training targets, preventing the feedback loop that occurs when the network chases a constantly shifting goal, which would otherwise cause training to diverge.
-
-\textbf{Limitations:} DQN struggles with partial observability, uncertainty in stochastic environments (random wind variable), adapting policies if environment dynamic changes (change of wind direction).
+Mnih et al. established the modern baseline for deep RL by combining Q-learning with convolutional neural networks. DQN introduced two critical innovations: 1) \textbf{Experience Replay}, which stores transitions in a buffer to break temporal correlations through random sampling, and 2) a \textbf{Target Network}, which provides stable optimization targets. While DQN excels in fully observable environments, it struggles with POMDPs and stochastic dynamics where single-step observations are insufficient for decision making.
 
 \subsection{Deep Recurrent Q-Network (DRQN)}
-``Deep Recurrent Q-Learning for Partially Observable MDPs'' \cite{hausknecht2017}
+\textit{``Deep Recurrent Q-Learning for Partially Observable MDPs''} \cite{hausknecht2017}
 
-This research proposed the DRQN that addresses the shortcomings of requiring full observability in DQN. DRQN replaces the first fully connected layer in DQN with a Long Short-Term Memory (LSTM) recurrent layer that enables the agent to make decisions based on what it sees now and everything it remembers seeing (memory). LSTM works by maintaining a hidden state that gets passed from one timestep to the next and updated at each step. It can decide what to forget (Forget Gate), what to remember (Input Gate), and what to use right now (Output Gate).
+Hausknecht and Stone addressed the limitations of DQN in partially observable environments by replacing the initial fully connected layer with a Long Short-Term Memory (LSTM) recurrent layer. This allows the agent to maintain a hidden state that integrates observations over time, effectively building a temporal memory. In our work, we utilize DRQN as the foundational architecture to handle the $5\times5$ vision constraint.
 
-\textbf{Limitations:} Slow to train because LSTM is sequential and may not outperform DQN on very simple POMDPs.
+\subsection{Distributional RL (QR-DQN)}
+\textit{``Implicit Quantile Networks for Distributional Reinforcement Learning''} \cite{dabney2018}
 
-\subsection{Distributional RL with Quantile Regression (QR-DQN)}
-``Implicit Quantile Networks for Distributional Reinforcement Learning'' \cite{dabney2018}\\
-This research is another variant of DQN, where instead of outputting the average expected reward, the model predicts the full distribution of possible rewards. This benefits outcomes that are highly variable and agents are in a stochastic environment. QR-DQN divides the reward range into N evenly spaced percentile: 1st percentile being the worst and last being the best. 
-Notably, this research paper tests QR-DQN on a windy environment. It was found that there are two types of outcomes at the start state: lower returns when wind blows agent off track and higher returns when agent does not encounter wind and smoothly travels to goal. QR-DQN is able to find this pattern.
+Standard RL models predict the \textit{expected} value of future rewards. In contrast, Distributional RL predicts the full probability distribution of returns. Quantile Regression DQN (QR-DQN) approximates this distribution using a set of discretely spaced quantiles. This approach is particularly effective in stochastic environments—such as our "windy" Frozen Lake—where it allows the agent to distinguish between mean performance and risk-heavy tails.
 
 \subsection{RL in Non-Stationary Environments}
-\textit{``Reinforcement Learning in Non-Stationary Environments'' (Padakandla et al., 2020).}
-This paper proposes a new method called Context Q-learning (QL) to address environment changes that affects optimal policy. The first part of Context QL uses data collected during learning to detect changes in model (i.e. when the wind direction or reward changes). This is achieved through an algorithm called Online Dirichlet Change Point detection (OCPD). Then, for each context, it stores a separate Q-table.
+\textit{``Reinforcement Learning in Non-Stationary Environments''} (Padakandla et al., 2020)
 
-\subsection{RND}
-``Exploration by Random Network Distillation'' \cite{burda2018}
-While DQN have lower prediction errors on examples similar to those which they have been trained on, they don’t perform as well on unfamiliar environments. Thus, this research proposes a bonus reward that gives the agent extra points for visiting states it is still struggling with. 
+Handling shifting dynamics is a core challenge in real-world RL. Padakandla et al. proposed methods for detecting environmental change points (e.g., shifts in wind direction) and adapting policies accordingly. Our implementation addresses non-stationarity by providing the agent with explicit wind embeddings and utilizing distributional returns to absorb aleatoric uncertainty.
+
+\subsection{Random Network Distillation (RND)}
+\textit{``Exploration by Random Network Distillation''} \cite{burda2018}
+
+Exploration in high-penalty environments is often stifled by the agent's fear of failure. RND encourages exploration by providing a curiosity-driven reward based on how difficult it is for a predictor network to mimic a frozen random network's output. This "surprise" bonus enables the agent to navigate complex grids even when the external reward signal is sparse.
+
 \section{Methods}
-\subsection{Baseline: Q-learning}
-The equation we are updating is: 
-{%
-  $Q(s,a) \leftarrow Q(s,a) + \alpha\bigl[r + \gamma\max_{a'}Q(s',a') - Q(s,a)\bigr]$.
-}
-{%
-  Note that $\varepsilon$ governs \textit{action selection} separately
-  via the $\varepsilon$-greedy policy: take a random action with probability $\varepsilon$,
-  otherwise take $\arg\max_a Q(s,a)$. This determines which $(s,a)$ pairs get visited
-  and updated, but is not part of the update rule itself.
-}
+Our methodology focuses on the transition from tabular baselines to deep recurrent architectures. The detailed hyperparameters and design choices for each implementation can be found in Appendix \ref{sec:appendix}.
 
-\begin{table}[h]
-\centering
-\small
-\caption{Q-Learning Implementation: Design Choices}
-\begin{tabularx}{\textwidth}{l l X}
-\toprule
-\textbf{Setting} & \textbf{Value} & \textbf{Reason} \\
-\midrule
+\subsection{Deep Q-Learning Implementation}
+The DQN agent minimizes the following temporal difference loss:
+\[
+  L(\theta) = \mathbb{E}_{(s,a,r,s') \sim \mathcal{D}}\!\left[\left(r + \gamma \max_{a'} Q(s',a';\theta^{-}) - Q(s,a;\theta)\right)^{2}\right]
+\]
+where $\theta$ represents the policy network weights and $\theta^{-}$ represents the frozen target network. Our implementation replaces the standard CNN with tile embeddings suited for symbolic grid observations, allowing for efficient processing of the $5\times5$ window.
 
-State key $s$ & $(t_1, \ldots, t_{25}, w)$
-    & Flattened $5 \times 5$ tile observations $t_i \in \{0,1,2,3,4\}$ plus wind direction $w \in \{0,1,2,3\}$;
-      appending $w$ ensures the same grid view under different wind maps to distinct states. \\[4pt]
+\subsection{Architectural Enhancements}
+Building upon the DQN, we implement three major enhancements:
+\begin{enumerate}
+    \item \textbf{Recurrency:} We integrate an LSTM layer after the embedding stage to handle the POMDP nature of the vision window.
+    \item \textbf{Wind Awareness:} The current wind direction is passed as a second explicit input through a learned 16-dimensional embedding, allowing the agent to proactively adjust its policy.
+    \item \textbf{Distributional Returns:} We replace the standard Q-head with a quantile regression head that outputs 51 distinct quantiles, providing a robust estimate of return uncertainty.
+\end{enumerate}
 
-Learning rate $\alpha$ & $0.1$
-    & Small enough for stable convergence, large enough for tractable learning speed. \\[4pt]
+\section{Experiments and Results}
 
-Discount factor $\gamma$ & $0.99$
-    & A reward $k$ steps away is worth $\gamma^k \cdot r$ today. High $\gamma$ is needed
-      because the goal may be many steps away. \\[4pt]
+\subsection{Experimental Setup}
+Experiments were conducted on an $8 \times 8$ Enhanced Frozen Lake grid. The agent's vision was restricted to a $5 \times 5$ window, and a dynamic "wind" variable shifted every 1,000 episodes. To discourage stagnation, we applied a living penalty of $-0.1$ per step, with terminal rewards of $+30$ (Goal) and $-10$ (Hole).
 
-Exploration $\varepsilon$ & $1.0 \to 0.05$
-    & $\varepsilon_t = \max(0.05,\; 1.0 \times 0.99995^{t})$.
-      Starts fully random to build the Q-table from scratch,
-      then decays to a 5\% floor to retain some exploration. \\[4pt]
+\subsection{Model Progression and Architectures}
+We evaluated a sequence of agents, evolving from simple baselines into complex hybrid architectures. Table \ref{architecture-table} summarizes this progression and the specific benefits provided by each architectural addition.
 
-$\varepsilon$ decay rate & $0.99995$
-    & Reaches $\varepsilon \approx 0.05$ around episode 60{,}000 of 150{,}000;
-      the first ${\sim}40\%$ of training is exploration-heavy. \\[4pt]
-
-Max episodes & $150{,}000$
-    & Shared across all methods for a fair comparison. \\[4pt]
-
-Max steps/episode & $200$
-    & Prevents infinite loops; consistent with grid size. \\
-
-\bottomrule
-\end{tabularx}
-\end{table}
-
-\subsection{DQN}
-The loss function we are minimizing is: 
-{%
-  $L(\theta) = \mathbb{E}_{(s,a,r,s') \sim \mathcal{D}}\!\left[\left(r + \gamma \max_{a'} Q(s',a';\theta^{-}) - Q(s,a;\theta)\right)^{2}\right]$
-}
-{%
-  where $\theta$ are the policy network weights being trained, $\theta^{-}$ are the
-  frozen target network weights used to compute stable training targets,
-  $\mathcal{D}$ is the replay buffer, and $\gamma$ is the discount factor.
-  Unlike Q-learning which updates a table entry directly, DQN minimizes this loss
-  via gradient descent, adjusting $\theta$ so the network's output $Q(s,a;\theta)$
-  moves closer to the target $r + \gamma \max_{a'} Q(s',a';\theta^{-})$.
-  $\varepsilon$ governs action selection separately via $\varepsilon$-greedy policy,
-  as in Q-learning.
-}
 \begin{table}[H]
-\centering
-\small
-\caption{DQN Implementation: Design Choices}
-\begin{tabularx}{\textwidth}{l l X}
-\toprule
-
-\textbf{Setting} & \textbf{Value} & \textbf{Reason} \\
-\midrule
-
-Input: tile embedding & $5 \times 16$ 
-    & Each of the 5 tile types in the $5\times5$ window is mapped to a learned
-      16-dimensional vector. Replaces the CNN used in Mnih et al.\ (2015). \\[4pt]
-
-Input: wind embedding & $4 \times 16$
-    & Wind direction is mapped to its own 16-dimensional
-      vector and concatenated with tile features. \\[4pt]
-
-Combined input dim & $26 \times 16 = 416$
-    & 25 tile embeddings $+$ 1 wind embedding, each of size 16, concatenated
-      into a single feature vector fed to the fully connected layers. \\[4pt]
-
-Network architecture & $416 \to 128 \to 128 \to 4$
-    & Two hidden layers with ReLU activations, followed by a linear Q-head
-      outputting one Q-value per action. \\[4pt]
-
-Replay buffer $\mathcal{D}$ & $100{,}000$ transitions
-    & Stores individual $(s, a, r, s')$ transitions; random mini-batch sampling
-      breaks temporal correlation between consecutive steps. \\[4pt]
-
-Batch size & $64$
-    & Number of transitions sampled per gradient update. \\[4pt]
-
-Learning rate $\alpha$ & $1\times10^{-4}$
-    & Standard choice for Adam optimizer in deep RL; small enough to
-      prevent unstable updates. \\[4pt]
-
-Target update freq\ & every $20$ episodes
-    & $\theta^{-} \leftarrow \theta$ every 20 episodes; keeps training targets
-      stable long enough to prevent the network from chasing a moving goal. \\[4pt]
-
-\bottomrule
-\end{tabularx}
+    \centering
+    \caption{Evolution of Model Architectures}
+    \label{architecture-table}
+    \begin{tabularx}{\textwidth}{l l X}
+        \toprule
+        \textbf{Model Stage} & \textbf{Key Addition} & \textbf{Primary Benefit / Challenge Addressed} \\
+        \midrule
+        Tabular Q-Learning & Lookup table & Baseline; fails on high-dimensional POMDPs. \\
+        Standard DQN & Tile embeddings & Handles larger state spaces; lacks temporal memory. \\
+        DRQN & + LSTM layer & Solves partial observability via state sequences. \\
+        QR-DRQN & + Quantile Reg. & Increases robustness to wind-induced uncertainty. \\
+        RND-DRQN & + Curiosity bonus & Prevents local minima in sparse reward maps. \\
+        \bottomrule
+    \end{tabularx}
 \end{table}
 
+\textbf{Baselines: Tabular Q-Learning and DQN} \\
+As expected, Tabular Q-Learning achieved a success rate of only $17.0\%$. The high-dimensional state space created by the vision window and wind combinations exceeded the capacity of a lookup table. Standard DQN improved this to $63.0\%$, but remained limited by its lack of memory; without recurrency, the agent could not distinguish between identical local observations at different global positions.
 
-\section{Experiments, results, or synthesis quality}
+\textbf{The Role of Memory and Wind Awareness: DRQN} \\
+The introduction of an LSTM layer caused the success rate to jump to $94.0\%$. The hidden state allowed the agent to "map" its surroundings as it moved. Furthermore, providing \textbf{wind direction as an explicit input} had a significant effect; by concatenating wind embeddings, the agent proactively compensated for environmental shifts rather than reacting to them after the fact.
+
+\textbf{Advanced Hybrid Models: QR-DRQN and RND-DRQN} \\
+Both hybrid models achieved a $97.0\%$ success rate, the highest among all learning agents. QR-DRQN showed greater stability in the presence of stochastic wind, while RND-DRQN reached the goal more efficiently in early training by incentivizing the exploration of novel states.
+
+\subsection{Evaluation Methodology}
+We used a custom evaluation script, \texttt{evaluate\_models.py}, testing each agent over 100 episodes with \textbf{fixed seeds} (starting from 2000) to ensure consistent map generation. We also calculated an \textbf{Oracle Baseline} using BFS, which has full map visibility and provides a theoretical upper bound for rewards and path efficiency.
+
+\subsection{Comparison of Results}
+The results of our evaluation are summarized in Table \ref{results-table}.
+
+\begin{table}[H]
+    \centering
+    \caption{Performance Comparison of RL Agents on Enhanced Frozen Lake}
+    \label{results-table}
+    \begin{tabularx}{\textwidth}{l X c c}
+        \toprule
+        \textbf{Model} & \textbf{Key Architecture} & \textbf{Success Rate} & \textbf{Avg Reward} \\
+        \midrule
+        Oracle (BFS) & Shortest Path (Full Map) & $100.0\%$ & $30.70$ \\
+        \midrule
+        Tabular Q-Learning & State-Wind Lookup Table & $17.0\%$ & $-2.53$ \\
+        Standard DQN & Tile Embeddings + MLP & $63.0\%$ & $8.65$ \\
+        Standard DRQN & LSTM Memory & $94.0\%$ & $19.24$ \\
+        \textbf{QR-DRQN} & \textbf{Distributional + LSTM} & $\mathbf{97.0\%}$ & $\mathbf{19.81}$ \\
+        \textbf{RND-DRQN} & \textbf{Curiosity + LSTM} & $\mathbf{97.0\%}$ & $19.76$ \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+\section{Discussion}
+
+\subsection{The Criticality of Recurrence: DQN vs. DRQN}
+The leap from a 63\% success rate in DQN to 94\% in DRQN represents the most significant performance gain in our study. This jump identifies the "Memory Threshold" required for partial observability. In our $5\times5$ vision window, an agent frequently encounters "state aliasing"—situations where local views (e.g., all frozen tiles) are identical despite being at different global coordinates. Standard DQN treats these as the same state, leading to circular paths or repetitive errors. The LSTM layer in DRQN solves this by maintaining a hidden "belief state," integrating sequences of observations to effectively reconstruct global coordinates from local movements.
+
+\subsection{Risk vs. Curiosity: Taming Uncertainty and Exploration}
+Our hybrid models, QR-DRQN and RND-DRQN, both reached a near-optimal 97\% success rate, but they achieved this through different mechanisms:
+\begin{itemize}
+    \item \textbf{QR-DRQN (Risk Awareness):} In the "Windy" environment, transitions are stochastic. A standard agent might conclude an action is "bad" simply because a random wind gust pushed it into a hole. QR-DRQN learns the entire distribution of outcomes, allowing it to distinguish between actions with a 10\% "wind risk" and those that are fundamentally mediocre. This distributional resilience makes the agent robust to aleatoric uncertainty.
+    \item \textbf{RND-DRQN (Knowledge Seeking):} The living penalty often causes agents to learn "helplessness," where they stay near the start to avoid the high cost of falling into holes. RND provides a curiosity bonus for visiting "surprising" states (those with high prediction error), driving the agent to explore corners of the $8\times8$ grid that standard agents ignore out of fear.
+\end{itemize}
+
+\subsection{Possible Performance Ceiling}
+The convergence of both hybrid models at 97\% suggests a performance ceiling for the $8\times8$ grid. This gap is likely due to "redundant strengths"—once memory provides a 94\% baseline, QR and RND are simply resolving the final 3\% of edge cases. Furthermore, we hypothesize that approximately 2--3\% of randomly generated maps may be "stochastically impossible," where specific hole placements and wind directions make the goal mathematically unreachable regardless of the RL method.
+
 \section{Reproducibility and code quality or proof writing}
-\section{Discussion, Limitation, and Future Directions}
-\section{Conclusion}
 
+\section{Limitations and Future Directions}
+
+\subsection{Current Limitations}
+A primary limitation of our current approach is the computational overhead associated with LSTM layers and Quantile Regression, which increases training latency and memory requirements. Additionally, while our methods proved highly effective on an $8\times8$ grid, the "risk-averse" nature of QR-DRQN might encounter challenges on much larger maps where the exploration-exploitation trade-off becomes more extreme.
+
+\subsection{Future Directions}
+Future research should focus on scaling these architectures to \textbf{larger and more complex maps}, such as $16\times16$ or $32\times32$ grids, with a significantly higher density of obstacles and holes. To manage the increased sparsity of rewards in these environments, we propose applying \textbf{new reward setting techniques}, such as \textit{Curriculum Learning} or \textit{Hindsight Experience Replay} (HER). By incrementally increasing map complexity or allowing agents to learn from failed episodes, these techniques could bridge the gap to human-level performance on large-scale grids. Furthermore, investigating a "triple hybrid" model (QR-RND-DRQN) remains a promising path to determine if combining explicit risk-awareness with robust curiosity can finally resolve the remaining $3\%$ failure gap.
+
+\section{Conclusion}
+In this project, we demonstrated that solving complex grid-worlds requires addressing the "deadly triad" of partial observability, non-stationary dynamics, and sparse rewards. We showed that while memory (LSTM) is the primary driver of success, providing a 31\% boost over feed-forward baselines, the addition of distributional returns and curiosity-driven exploration is essential for reaching near-optimal performance.
+
+\newpage
 \bibliographystyle{plain}
 \bibliography{Project}
 
+\newpage
+\appendix
+\section{Implementation Details}
+\label{sec:appendix}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Q-Learning Implementation: Design Choices}
+\label{tab:q_params}
+    \begin{tabularx}{\textwidth}{l l X}
+    \toprule
+    \textbf{Setting} & \textbf{Value} & \textbf{Reason} \\
+    \midrule
+        State key $s$ & $(t_1, \ldots, t_{25}, w)$
+            & Flattened $5 \times 5$ tile observations plus wind direction $w$. \\[4pt]
+        Learning rate $\alpha$ & $0.1$
+            & Balances convergence stability and learning speed. \\[4pt]
+        Discount factor $\gamma$ & $0.99$
+            & Ensures long-term rewards (reaching the goal) are prioritized. \\[4pt]
+        Exploration $\varepsilon$ & $1.0 \to 0.05$
+            & Exponential decay with a 5\% floor to maintain minimal exploration. \\[4pt]
+        Max episodes & $150{,}000$
+            & Consistent training duration for all baseline comparisons. \\
+    \bottomrule
+    \end{tabularx}
+\end{table}
+
+\vspace{2em}
+
+\begin{table}[H]
+    \centering
+    \small
+    \caption{DQN Implementation: Design Choices}
+    \label{tab:dqn_params}
+    \begin{tabularx}{\textwidth}{l l X}
+        \toprule
+        \textbf{Setting} & \textbf{Value} & \textbf{Reason} \\
+        \midrule
+            Tile Embeddings & $5 \times 16$ 
+                & Replaces CNN with learned vectors for grid symbols. \\[4pt]
+            Wind Embeddings & $4 \times 16$
+                & Explicit feature for non-stationary wind direction. \\[4pt]
+            Architecture & $416 \to 128 \to 128 \to 4$
+                & MLP with two hidden layers and ReLU activations. \\[4pt]
+            Replay Buffer & $100{,}000$
+                & Sufficient capacity to break temporal correlations. \\[4pt]
+            Batch Size & $64$
+                & Standard mini-batch size for stable gradient updates. \\[4pt]
+            Learning Rate $\alpha$ & $1\times10^{-4}$
+                & Optimal for Adam optimizer stability in this domain. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
 \end{document}

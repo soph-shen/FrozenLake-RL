@@ -5,6 +5,7 @@ from matplotlib import colors
 import time
 import os
 import glob
+from PIL import Image
 from enhanced_frozen_lake import EnhancedFrozenLake
 from drqn_agent import DRQN
 from qr_drqn_agent import QR_DRQN
@@ -53,6 +54,9 @@ def play():
     
     print(f"Loading model: {selected_model} on {device}")
     
+    save_gif_input = input("Do you want to save the playback as a GIF? (y/N): ").strip().lower()
+    save_gif = save_gif_input == 'y'
+    
     is_qr = "QR-DRQN" in selected_model
     is_dqn = "DQN" in selected_model and "DRQN" not in selected_model
     
@@ -70,7 +74,8 @@ def play():
     model.eval()
 
     # 3. Graphical Setup
-    plt.ion()
+    if not save_gif:
+        plt.ion()
     fig, (ax_global, ax_local) = plt.subplots(1, 2, figsize=(14, 7))
     
     # 0:F (Blue), 1:S (Green), 2:G (Gold), 3:H (Red), 4:W (Gray)
@@ -81,6 +86,8 @@ def play():
     action_arrows = {0: (-0.4, 0), 1: (0, 0.4), 2: (0.4, 0), 3: (0, -0.4)}
     action_names = {0: "LEFT", 1: "DOWN", 2: "RIGHT", 3: "UP"}
     wind_arrows = {0: (-1, 0), 1: (0, 1), 2: (1, 0), 3: (0, -1)}
+
+    frames = []
 
     for ep in range(5):
         obs, info = env.reset()
@@ -128,7 +135,13 @@ def play():
                 ax.grid(which='minor', color='w', linestyle='-', linewidth=2)
                 ax.tick_params(which='both', bottom=False, left=False, labelbottom=False, labelleft=False)
 
-            plt.draw(); plt.pause(0.15)
+            plt.draw()
+            if save_gif:
+                fig.canvas.draw()
+                image = np.asarray(fig.canvas.buffer_rgba())[..., :3]
+                frames.append(Image.fromarray(image))
+            else:
+                plt.pause(0.15)
 
             # --- Agent Logic ---
             obs_tensor = torch.FloatTensor(obs).unsqueeze(0).unsqueeze(0).to(device)
@@ -153,9 +166,25 @@ def play():
         msg = "SUCCESS" if total_reward > 10.0 else "FAIL"
         color = 'green' if total_reward > 10.0 else 'red'
         ax_global.text(0.5, 0.5, msg, transform=ax_global.transAxes, fontsize=40, color=color, alpha=0.8, ha='center', va='center', fontweight='bold')
-        plt.draw(); plt.pause(1.5)
+        plt.draw()
+        
+        if save_gif:
+            fig.canvas.draw()
+            image = np.asarray(fig.canvas.buffer_rgba())[..., :3]
+            # Add a few frames to pause at the end of the episode
+            for _ in range(10):
+                frames.append(Image.fromarray(image))
+        else:
+            plt.pause(1.5)
 
-    plt.ioff(); plt.show()
+    if save_gif and frames:
+        gif_name = selected_model.replace('.pth', '.gif')
+        print(f"Saving GIF to {gif_name}...")
+        frames[0].save(gif_name, save_all=True, append_images=frames[1:], optimize=False, duration=150, loop=0)
+        print("GIF saved successfully!")
+    elif not save_gif:
+        plt.ioff()
+        plt.show()
 
 if __name__ == "__main__":
     play()
