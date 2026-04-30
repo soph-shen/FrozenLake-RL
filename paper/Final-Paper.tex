@@ -17,6 +17,9 @@
 \usepackage{xcolor}         % colors
 \usepackage{tabularx}
 \usepackage{float}
+\usepackage{graphicx}
+\usepackage{setspace}
+\setstretch{1}
 
 \makeatletter
 \renewcommand{\@noticestring}{}
@@ -145,6 +148,13 @@ Both hybrid models achieved a $97.0\%$ success rate, the highest among all learn
 \subsection{Evaluation Methodology}
 We used a custom evaluation script, \texttt{evaluate\_models.py}, testing each agent over 100 episodes with \textbf{fixed seeds} (starting from 2000) to ensure consistent map generation. We also calculated an \textbf{Oracle Baseline} using BFS, which has full map visibility and provides a theoretical upper bound for rewards and path efficiency.
 
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{map8_v5_RND-DRQN_20260419_194828.jpg}
+    \caption{RND-DRQN Evaluation on map8\_v5}
+    \label{fig:rnd-drqn-eval}
+\end{figure}
+
 \subsection{Comparison of Results}
 The results of our evaluation are summarized in Table \ref{results-table}.
 
@@ -167,22 +177,23 @@ The results of our evaluation are summarized in Table \ref{results-table}.
     \end{tabularx}
 \end{table}
 
+The results demonstrate a clear progression in performance as architectural complexity increases. The Tabular Q-Learning baseline struggles severely, achieving a $17.0\%$ success rate and negative average rewards, underscoring the inadequacy of lookup tables for partially observable, high-dimensional state spaces. The incorporation of deep neural networks in the Standard DQN raises the success rate to $63.0\%$; however, the absence of temporal memory restricts its ability to resolve state aliasing. The introduction of recurrent memory via the Standard DRQN yields a profound improvement, elevating the success rate to $94.0\%$ and the average reward to $19.24$. Finally, the advanced hybrid models, QR-DRQN and RND-DRQN, further narrow the gap to the optimal performance of the Oracle baseline. By explicitly mitigating environmental stochasticity and promoting exploration in the presence of sparse rewards, both models attain a near-optimal $97.0\%$ success rate and average rewards approaching $20.0$, demonstrating their robust capability in navigating challenging POMDP dynamics.
+
 \section{Discussion}
 
 \subsection{The Criticality of Recurrence: DQN vs. DRQN}
-The leap from a 63\% success rate in DQN to 94\% in DRQN represents the most significant performance gain in our study. This jump identifies the "Memory Threshold" required for partial observability. In our $5\times5$ vision window, an agent frequently encounters "state aliasing"—situations where local views (e.g., all frozen tiles) are identical despite being at different global coordinates. Standard DQN treats these as the same state, leading to circular paths or repetitive errors. The LSTM layer in DRQN solves this by maintaining a hidden "belief state," integrating sequences of observations to effectively reconstruct global coordinates from local movements.
+The substantial improvement from a $63.0\%$ success rate in DQN to $94.0\%$ in DRQN constitutes the most significant performance gain observed in this study. This improvement highlights the "memory threshold" necessitated by partial observability. Within the constrained $5\times5$ observation window, the agent frequently experiences state aliasing—scenarios where local observations (e.g., exclusively frozen tiles) are visually identical despite corresponding to distinct global coordinates. The standard DQN architecture processes these instances as identical states, precipitating circular trajectories or repetitive failures. Conversely, the integration of an LSTM layer in DRQN mitigates this issue by maintaining a hidden belief state, which aggregates sequences of observations to effectively infer global coordinates from sequential local movements.
 
-\subsection{Risk vs. Curiosity: Taming Uncertainty and Exploration}
-Our hybrid models, QR-DRQN and RND-DRQN, both reached a near-optimal 97\% success rate, but they achieved this through different mechanisms:
+\subsection{Risk Management versus Directed Curiosity}
+The hybrid models, QR-DRQN and RND-DRQN, both converged to a near-optimal $97.0\%$ success rate, albeit through fundamentally divergent mechanisms:
 \begin{itemize}
-    \item \textbf{QR-DRQN (Risk Awareness):} In the "Windy" environment, transitions are stochastic. A standard agent might conclude an action is "bad" simply because a random wind gust pushed it into a hole. QR-DRQN learns the entire distribution of outcomes, allowing it to distinguish between actions with a 10\% "wind risk" and those that are fundamentally mediocre. This distributional resilience makes the agent robust to aleatoric uncertainty.
-    \item \textbf{RND-DRQN (Knowledge Seeking):} The living penalty often causes agents to learn "helplessness," where they stay near the start to avoid the high cost of falling into holes. RND provides a curiosity bonus for visiting "surprising" states (those with high prediction error), driving the agent to explore corners of the $8\times8$ grid that standard agents ignore out of fear.
+    \item \textbf{QR-DRQN (Risk Awareness):} In environments exhibiting stochastic non-stationary dynamics (i.e., "wind"), transitions are inherently probabilistic. A conventional agent may erroneously attribute a negative value to a generally optimal action if an unpredictable transition forces it into a terminal failure state. QR-DRQN mitigates this by estimating the complete distribution of returns, enabling it to differentiate between actions carrying a marginal probability of catastrophic failure and those with uniformly poor expected returns. This distributional estimation endows the agent with robust resilience against aleatoric uncertainty.
+    \item \textbf{RND-DRQN (Curiosity-Driven Exploration):} The implementation of a continuous living penalty frequently induces learned helplessness, wherein agents remain localized near the starting position to preclude the severe penalties associated with terminal failure. Random Network Distillation provides an intrinsic curiosity bonus proportional to the prediction error of a novel state. This intrinsic motivation compels the agent to systematically explore the $8\times8$ grid, thereby circumventing local minima that typically impede standard architectures.
 \end{itemize}
 
-\subsection{Possible Performance Ceiling}
-The convergence of both hybrid models at 97\% suggests a performance ceiling for the $8\times8$ grid. This gap is likely due to "redundant strengths"—once memory provides a 94\% baseline, QR and RND are simply resolving the final 3\% of edge cases. Furthermore, we hypothesize that approximately 2--3\% of randomly generated maps may be "stochastically impossible," where specific hole placements and wind directions make the goal mathematically unreachable regardless of the RL method.
+\subsection{Empirical Performance Upper Bound}
+The convergence of both advanced hybrid models at a $97.0\%$ success rate implies an empirical performance ceiling for the $8\times8$ environment under the current parameterization. This residual $3.0\%$ margin is likely attributable to overlapping model competencies; once temporal memory establishes a robust $94.0\%$ baseline, the distributional and curiosity-driven enhancements serve primarily to resolve the remaining edge cases. Furthermore, we hypothesize that approximately $2.0\%$ to $3.0\%$ of the procedurally generated maps constitute stochastically impossible configurations, wherein specific combinations of obstacle placement and non-stationary dynamics render the goal mathematically unattainable irrespective of the algorithmic approach employed.
 
-\section{Reproducibility and code quality or proof writing}
 
 \section{Limitations and Future Directions}
 
@@ -193,7 +204,7 @@ A primary limitation of our current approach is the computational overhead assoc
 Future research should focus on scaling these architectures to \textbf{larger and more complex maps}, such as $16\times16$ or $32\times32$ grids, with a significantly higher density of obstacles and holes. To manage the increased sparsity of rewards in these environments, we propose applying \textbf{new reward setting techniques}, such as \textit{Curriculum Learning} or \textit{Hindsight Experience Replay} (HER). By incrementally increasing map complexity or allowing agents to learn from failed episodes, these techniques could bridge the gap to human-level performance on large-scale grids. Furthermore, investigating a "triple hybrid" model (QR-RND-DRQN) remains a promising path to determine if combining explicit risk-awareness with robust curiosity can finally resolve the remaining $3\%$ failure gap.
 
 \section{Conclusion}
-In this project, we demonstrated that solving complex grid-worlds requires addressing the "deadly triad" of partial observability, non-stationary dynamics, and sparse rewards. We showed that while memory (LSTM) is the primary driver of success, providing a 31\% boost over feed-forward baselines, the addition of distributional returns and curiosity-driven exploration is essential for reaching near-optimal performance.
+In this project, we demonstrated that solving complex, stochastic grid-worlds necessitates addressing the "deadly triad" of reinforcement learning: partial observability, non-stationary dynamics, and sparse rewards. By systematically evaluating a progression of agents on the Enhanced Frozen Lake environment, we identified the specific architectural components required to overcome each challenge. Our findings reveal that recurrent memory (LSTM) acts as the critical foundational element, resolving state aliasing and providing a profound $31.0\%$ performance increase over standard feed-forward baselines. Furthermore, achieving near-optimal performance in highly unpredictable settings requires more than just temporal memory. The integration of distributional return estimation (QR-DRQN) provides essential resilience against aleatoric uncertainty, allowing the agent to manage risk rather than merely reacting to it. Concurrently, curiosity-driven exploration (RND-DRQN) actively mitigates the stagnation caused by sparse rewards and harsh living penalties by intrinsically motivating the agent to discover novel states. Ultimately, these advanced hybrid architectures underscore a vital design principle for real-world RL applications: autonomous agents must be equipped not only to maintain an internal representation of their environment, but also to probabilistically evaluate risk and intelligently direct their own exploration.
 
 \newpage
 \bibliographystyle{plain}
