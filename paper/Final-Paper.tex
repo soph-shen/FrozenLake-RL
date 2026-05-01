@@ -32,7 +32,6 @@
   Shengkai (Kevin) Tao, Xiyuan (Sophia) Shen \\
   School of Data Science And Society \\
   UNC Chapel Hill \\
-  \texttt{\{kevintao, xyshen\}@unc.edu} \\
 }
 
 \begin{document}
@@ -232,7 +231,7 @@ The results demonstrate a clear progression in performance as architectural comp
 
 \section{Discussion}
 
-\subsection{The Criticality of Recurrence: DQN vs. DRQN}
+\subsection{LSTM layer in partial observability problem}
 The substantial improvement from a $63.0\%$ success rate in DQN to $94.0\%$ in DRQN constitutes the most significant performance gain observed in this study. This improvement highlights the "memory threshold" necessitated by partial observability. Within the constrained $5\times5$ observation window, the agent frequently experiences state aliasing—scenarios where local observations (e.g., exclusively frozen tiles) are visually identical despite corresponding to distinct global coordinates. The standard DQN architecture processes these instances as identical states, precipitating circular trajectories or repetitive failures. Conversely, the integration of an LSTM layer in DRQN mitigates this issue by maintaining a hidden belief state, which aggregates sequences of observations to effectively infer global coordinates from sequential local movements.
 
 \subsection{Risk Management versus Directed Curiosity}
