@@ -83,7 +83,7 @@ Hausknecht and Stone addressed the limitations of DQN in partially observable en
 Standard RL models predict the \textit{expected} value of future rewards. In contrast, Distributional RL predicts the full probability distribution of returns. Quantile Regression DQN (QR-DQN) approximates this distribution using a set of discretely spaced quantiles. This approach is particularly effective in stochastic environments—such as our "windy" Frozen Lake—where it allows the agent to distinguish between mean performance and risk-heavy tails.
 
 \subsection{RL in Non-Stationary Environments}
-\textit{``Reinforcement Learning in Non-Stationary Environments''} (Padakandla et al., 2020)
+\textit{``Reinforcement Learning in Non-Stationary Environments''} \cite{padakandla2022}
 
 Handling shifting dynamics is a core challenge in real-world RL. Padakandla et al. proposed methods for detecting environmental change points (e.g., shifts in wind direction) and adapting policies accordingly. Our implementation addresses non-stationarity by providing the agent with explicit wind embeddings and utilizing distributional returns to absorb aleatoric uncertainty.
 
