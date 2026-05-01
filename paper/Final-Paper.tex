@@ -107,6 +107,7 @@ Building upon the DQN, we implement three major enhancements:
 \begin{enumerate}
     \item \textbf{Recurrency:} We integrate an LSTM layer after the embedding stage to handle the POMDP nature of the vision window.
     \item \textbf{Wind Awareness:} The current wind direction is passed as a second explicit input through a learned 16-dimensional embedding, allowing the agent to proactively adjust its policy.
+    \item \textbf{Quantile Regression:} This will be explained in the following section. 
 \end{enumerate}
 
 \subsection{QR-DRQN}
