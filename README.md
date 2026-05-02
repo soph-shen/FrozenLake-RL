@@ -31,7 +31,6 @@ This project extends the classic Frozen Lake environment by introducing complex 
 | **DRQN** | 8x8 | Wind Embedding |
 | **QR-DRQN** | 8x8 | 51 Quantiles |
 | **RND-DRQN** | 8x8 | Curiosity Bonus |
-| **DRQN** | 16x16 | Curriculum Learning |
 
 ---
 
