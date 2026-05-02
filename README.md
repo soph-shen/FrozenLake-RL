@@ -22,13 +22,6 @@ This project extends the classic Frozen Lake environment by introducing complex 
 * **`evaluate_models.py`**: Head-to-head evaluation script. Automatically benchmarks all `.pth` models over 100 fixed-seed episodes and prints a comparison table (Success Rate, Reward, Steps).
 * **`play_agent.py`**: Interactive visualization using Matplotlib. Shows a dual-view (8×8 global and 5×5 local) with wind and action indicators.
 
-### `map16/` (16x16 Grid)
-* **`enhanced_frozen_lake.py`**: Scaled environment.
-    * **View**: 7×7 local observation window.
-    * **Constraint**: 400 max steps and a **2×2 BFS wide-path check** to ensure all paths are navigable even with wind.
-* **`drqn_agent.py`**: Scaled-up agent (256 hidden units) supporting **Curriculum Learning**. Difficulty (holes/wind) increases once the agent hits a 40% success rate.
-* **`play_agent.py`**: Visualization tool specifically configured for the 16×16 grid.
-
 ---
 
 ## Model Registry
@@ -43,3 +36,9 @@ This project extends the classic Frozen Lake environment by introducing complex 
 ---
 
 ## Usage
+### Setup
+uv sync
+### Run (8x8 Map)
+cd map8_v5
+uv run python play_agent.py       # Watch a trained agent play after picking model from a list
+uv run python evaluate_models.py   # Benchmark all .pth models head-to-head over 100 fixed-seed episodes and print a comparison table
